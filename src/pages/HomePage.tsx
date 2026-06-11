@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Hero } from '../components/Hero';
 import { Categories } from '../components/Categories';
 import { ProductCard } from '../components/ProductCard';
@@ -18,6 +18,16 @@ interface HomePageProps {
   handleQuickAddToCart: (product: Product, e: React.MouseEvent) => void;
 }
 
+type Bubble = {
+  id: number;
+  left: string;
+  size: string;
+  delay: string;
+  duration: string;
+  /** Set when the duck was just released — float away from this position */
+  releasedPos?: { x: number; y: number };
+};
+
 export const HomePage: React.FC<HomePageProps> = ({
   activeCategory,
   setActiveCategory,
@@ -30,9 +40,51 @@ export const HomePage: React.FC<HomePageProps> = ({
 }) => {
   const navigate = useNavigate();
 
-  const [bubbles, setBubbles] = useState<
-    { id: number; left: string; size: string; delay: string; duration: string }[]
-  >([]);
+  const [bubbles, setBubbles] = useState<Bubble[]>([]);
+  const [hoveredDuck, setHoveredDuck] = useState<number | null>(null);
+
+  // Drag state: which duck is being dragged and its current screen position
+  const [dragState, setDragState] = useState<{
+    id: number;
+    x: number;
+    y: number;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
+
+  // Keep a ref so global event listeners always see the latest drag state
+  const dragStateRef = useRef(dragState);
+  dragStateRef.current = dragState;
+
+  // Global listeners for drag move + release
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      const ds = dragStateRef.current;
+      if (!ds) return;
+      setDragState((prev) =>
+        prev ? { ...prev, x: e.clientX - prev.offsetX, y: e.clientY - prev.offsetY } : null
+      );
+    };
+
+    const onMouseUp = () => {
+      const ds = dragStateRef.current;
+      if (!ds) return;
+      // Save the drop position so the duck can float away from there
+      setBubbles((prev) =>
+        prev.map((b) =>
+          b.id === ds.id ? { ...b, releasedPos: { x: ds.x, y: ds.y } } : b
+        )
+      );
+      setDragState(null);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, []);
 
   useEffect(() => {
     const newBubbles = Array.from({ length: 15 }).map((_, i) => ({
@@ -118,22 +170,74 @@ export const HomePage: React.FC<HomePageProps> = ({
         </section>
       </div>
 
-      <div className="floating-ducks-container" style={{ position: 'fixed', opacity: 0.6, zIndex: 0, pointerEvents: 'none' }}>
-        {bubbles.map((b) => (
-          <img
-            key={b.id}
-            src="/new-duck.png"
-            alt=""
-            className="floating-duck-bg"
-            style={{
-              left: b.left,
-              width: b.size,
-              height: b.size,
-              animationDelay: b.delay,
-              animationDuration: b.duration,
-            }}
-          />
-        ))}
+      <div className="floating-ducks-container" style={{ position: 'fixed', opacity: 0.6, zIndex: 0 }}>
+        {bubbles.map((b) => {
+          const isDragging = dragState?.id === b.id;
+          const isReleased = !!b.releasedPos && !isDragging;
+          const isHovered = hoveredDuck === b.id && !isDragging && !isReleased;
+
+          return (
+            <img
+              key={b.id}
+              src="/new-duck.png"
+              alt=""
+              className={`floating-duck-bg${isReleased ? ' duck-float-away' : ''}`}
+              onMouseEnter={() => { if (!isDragging) setHoveredDuck(b.id); }}
+              onMouseLeave={() => { if (!isDragging) setHoveredDuck(null); }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                const rect = (e.currentTarget as HTMLImageElement).getBoundingClientRect();
+                // Clear any pending release animation before dragging again
+                setBubbles((prev) =>
+                  prev.map((bub) => bub.id === b.id ? { ...bub, releasedPos: undefined } : bub)
+                );
+                setDragState({
+                  id: b.id,
+                  x: rect.left,
+                  y: rect.top,
+                  offsetX: e.clientX - rect.left,
+                  offsetY: e.clientY - rect.top,
+                });
+              }}
+              onAnimationEnd={(e) => {
+                // Only reset on the float-away animation ending, not the looping one
+                if (e.animationName === 'floatDuckFromPos') {
+                  setBubbles((prev) =>
+                    prev.map((bub) => bub.id === b.id ? { ...bub, releasedPos: undefined } : bub)
+                  );
+                }
+              }}
+              style={{
+                // DRAGGING: fixed position driven by JS, animation cleared so
+                // CSS keyframe transforms don't offset the duck from the cursor.
+                // RELEASED: fixed position at drop point, one-shot float-away animation.
+                // NORMAL: absolute in container, looping float animation.
+                position: isDragging || isReleased ? 'fixed' : 'absolute',
+                left: isDragging ? dragState!.x : isReleased ? b.releasedPos!.x : b.left,
+                top: isDragging || isReleased ? (isDragging ? dragState!.y : b.releasedPos!.y) : undefined,
+                bottom: isDragging || isReleased ? undefined : '-60px',
+                width: b.size,
+                height: b.size,
+                // Kill animation while dragging; released uses CSS class; normal loops
+                animation: isDragging ? 'none' : undefined,
+                animationDelay: isDragging || isReleased ? undefined : b.delay,
+                animationDuration: isDragging || isReleased ? undefined : b.duration,
+                animationPlayState: isHovered ? 'paused' : 'running',
+                opacity: isDragging ? 0.85 : undefined,
+                cursor: isDragging ? 'grabbing' : 'grab',
+                filter: isDragging
+                  ? 'drop-shadow(0 0 20px rgba(255, 220, 50, 1)) brightness(1.3)'
+                  : isHovered
+                    ? 'drop-shadow(0 0 12px rgba(255, 220, 50, 0.9)) brightness(1.2)'
+                    : undefined,
+                transition: isDragging ? 'none' : 'filter 0.2s ease',
+                zIndex: isDragging ? 9999 : isReleased ? 9998 : undefined,
+                userSelect: 'none',
+                transform: isDragging ? 'scale(1.1)' : undefined,
+              }}
+            />
+          );
+        })}
       </div>
     </>
   );

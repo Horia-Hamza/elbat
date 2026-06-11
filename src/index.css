@@ -105,7 +105,7 @@ a {
   height: 100%;
   overflow: hidden;
   z-index: 0;
-  pointer-events: none;
+  pointer-events: none; /* container itself doesn't capture events */
 }
 
 .floating-duck-bg {
@@ -115,6 +115,8 @@ a {
   opacity: 0;
   filter: drop-shadow(0 4px 6px rgba(35, 107, 147, 0.1));
   animation: floatDuckUp 8s infinite ease-in;
+  pointer-events: all; /* each duck captures mouse events */
+  cursor: pointer;
 }
 
 @keyframes floatDuckUp {
@@ -135,6 +137,18 @@ a {
     transform: translateY(-105vh) scale(1.1) rotate(-20deg);
     opacity: 0;
   }
+}
+
+/* One-shot float played after the user releases a dragged duck */
+@keyframes floatDuckFromPos {
+  0%   { transform: translateY(0) scale(1) rotate(0deg);          opacity: 0.85; }
+  20%  { transform: translateY(-15vh) scale(1.05) rotate(8deg);   opacity: 0.75; }
+  60%  { transform: translateY(-55vh) scale(1) rotate(-10deg);    opacity: 0.45; }
+  100% { transform: translateY(-110vh) scale(0.9) rotate(15deg);  opacity: 0;    }
+}
+
+.duck-float-away {
+  animation: floatDuckFromPos 3.5s ease-out forwards !important;
 }
 
 /* 🚀 تنسيقات المكونات الأساسية */
