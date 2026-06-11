@@ -1,18 +1,16 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { Header } from './components/Header';
-import { Hero } from './components/Hero';
-import { Categories } from './components/Categories';
-import { ProductCard } from './components/ProductCard';
-import { ProductModal } from './components/ProductModal';
 import { CartDrawer } from './components/CartDrawer';
 import type { CartItem } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
 import { OrderTracker } from './components/OrderTracker';
 import { Toast } from './components/Toast';
 import type { ToastMessage } from './components/Toast';
-import { PRODUCTS, CATEGORIES } from './data/products';
+import { PRODUCTS } from './data/products';
 import type { Product } from './data/products';
-import { HelpCircle } from 'lucide-react';
+import { HomePage } from './pages/HomePage';
+import { ProductDetailsPage } from './pages/ProductDetailsPage';
 
 
 function App() {
@@ -32,7 +30,6 @@ function App() {
   const [showOnlyFavs, setShowOnlyFavs] = useState(false);
 
   // حالات فتح النوافذ المنبثقة
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   
@@ -124,19 +121,25 @@ function App() {
     setIsCheckoutOpen(false);
   };
 
-  // التصفية والبحث في المنتجات
-  const filteredProducts = PRODUCTS.filter((product) => {
-    const matchesCategory = activeCategory === 'all' || product.categoryKey === activeCategory;
-    const matchesSearch = product.title.includes(searchQuery) || product.description.includes(searchQuery);
-    const matchesFav = !showOnlyFavs || favorites.includes(product.id);
-    return matchesCategory && matchesSearch && matchesFav;
-  });
+
 
   // التمرير السلس إلى كتالوج المنتجات
+  const navigate = useNavigate();
   const scrollToCatalog = () => {
-    const element = document.getElementById('explore-products');
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+    // Navigate home if not there, then scroll
+    if (window.location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => {
+        const element = document.getElementById('explore-products');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    } else {
+      const element = document.getElementById('explore-products');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   };
 
@@ -162,62 +165,29 @@ function App() {
         }}
       />
 
-      {/* قسم الترحيب الرئيسي */}
-      <Hero
-        onExploreClick={scrollToCatalog}
-        latestProducts={PRODUCTS.slice(-3)}
-        onAddToCart={handleQuickAddToCart}
-        onProductClick={(prod) => setSelectedProduct(prod)}
-      />
-
-      {/* فئات التصنيف والمنتجات */}
-      <div id="explore-products" style={{ scrollMarginTop: '100px' }}>
-        <Categories
-          activeCategory={activeCategory}
-          onCategorySelect={(key) => {
-            setActiveCategory(key);
-            setShowOnlyFavs(false); // إلغاء تصفية المفضلة عند اختيار فئة
-          }}
-        />
-
-        {/* شبكة عرض المنتجات */}
-        <section className="section-container" style={{ paddingTop: '1rem', minHeight: '400px' }}>
-          <div className="section-header">
-            <h2 className="section-title">
-              {showOnlyFavs 
-                ? 'المنتجات المفضلة لديك' 
-                : activeCategory === 'all' 
-                  ? 'منتجاتنا المميزة' 
-                  : CATEGORIES.find(c => c.key === activeCategory)?.name}
-            </h2>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              تم العثور على {filteredProducts.length} منتج
-            </span>
-          </div>
-
-          {filteredProducts.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
-              <HelpCircle size={48} style={{ margin: '0 auto 1rem', color: 'var(--primary-light)' }} />
-              <h3>لم نعثر على أي منتجات تطابق بحثك!</h3>
-              <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                جرب تغيير خيارات التصفية أو البحث عن مصطلح آخر.
-              </p>
-            </div>
-          ) : (
-            <div className="products-grid">
-              {filteredProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  isFavorite={favorites.includes(product.id)}
-                  onToggleFavorite={handleToggleFavorite}
-                  onAddToCart={handleQuickAddToCart}
-                  onProductClick={(prod) => setSelectedProduct(prod)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+      {/* محتوى الصفحات الديناميكي (التنقل) */}
+      <div style={{ flexGrow: 1 }}>
+        <Routes>
+          <Route 
+            path="/" 
+            element={
+              <HomePage 
+                activeCategory={activeCategory}
+                setActiveCategory={setActiveCategory}
+                showOnlyFavs={showOnlyFavs}
+                setShowOnlyFavs={setShowOnlyFavs}
+                searchQuery={searchQuery}
+                favorites={favorites}
+                handleToggleFavorite={handleToggleFavorite}
+                handleQuickAddToCart={handleQuickAddToCart}
+              />
+            } 
+          />
+          <Route 
+            path="/product/:id" 
+            element={<ProductDetailsPage onAddToCart={handleAddToCart} />} 
+          />
+        </Routes>
       </div>
 
       {/* ذيل الصفحة الراقي (Footer) */}
@@ -286,19 +256,11 @@ function App() {
         </div>
 
         <div style={{ textAlign: 'center', padding: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.5)' }}>
-          جميع الحقوق محفوظة © {new Date().getFullYear()} لمتجر البطّ. صنع بكل 💛 وحب لتسهيل تسوقك العالمي.
+          جميع الحقوق محفوظة © {new Date().getFullYear()} لمتجر البطّ. صنع بكل 💛 لتسهيل تسوقك.
         </div>
       </footer>
 
       {/* المكونات المنبثقة والسحب (Modals & Drawers) */}
-      
-      {/* نافذة تفاصيل المنتج */}
-      <ProductModal
-        product={selectedProduct}
-        isOpen={selectedProduct !== null}
-        onClose={() => setSelectedProduct(null)}
-        onAddToCart={handleAddToCart}
-      />
 
       {/* سلة المشتريات الجانبية */}
       <CartDrawer

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Sparkles, Star, ShoppingCart, Clock } from 'lucide-react';
+import { ArrowLeft, Sparkles, Star, ShoppingCart } from 'lucide-react';
 import type { Product } from '../data/products';
 
 interface HeroProps {
@@ -15,20 +15,9 @@ export const Hero: React.FC<HeroProps> = ({
   onAddToCart,
   onProductClick,
 }) => {
-  const [bubbles, setBubbles] = useState<
-    { id: number; left: string; size: string; delay: string; duration: string }[]
-  >([]);
   const [visibleCards, setVisibleCards] = useState<number[]>([]);
 
   useEffect(() => {
-    const newBubbles = Array.from({ length: 12 }).map((_, i) => ({
-      id: i,
-      left: Math.random() * 100 + '%',
-      size: Math.random() * 40 + 15 + 'px',
-      delay: Math.random() * 6 + 's',
-      duration: Math.random() * 5 + 6 + 's',
-    }));
-    setBubbles(newBubbles);
 
     // بطاقات تظهر تدريجياً واحدة تلو الأخرى
     latestProducts.forEach((_, idx) => {
@@ -40,39 +29,18 @@ export const Hero: React.FC<HeroProps> = ({
 
   return (
     <div className="hero-wrapper">
-      {/* فقاعات الخلفية المائية */}
-      <div className="water-bubbles">
-        {bubbles.map((b) => (
-          <div
-            key={b.id}
-            className="bubble"
-            style={{
-              left: b.left,
-              width: b.size,
-              height: b.size,
-              animationDelay: b.delay,
-              animationDuration: b.duration,
-            }}
-          />
-        ))}
-      </div>
 
       {/* المحتوى التسويقي الأيمن */}
       <div className="hero-content">
         <span className="hero-tagline">
           <Sparkles size={14} style={{ marginLeft: '6px' }} />
-          بوابتك الآمنة للتسوق وشحن المنتجات العالمية مباشرة إلى مصر
+          منتجات عالمية بلمسة محلية
         </span>
         <h1 className="hero-title">
-          متجر <span>البط العالمي</span>
-          <br />
-          ماركاتك المفضلة لباب بيتك!
+          <span>البط</span> بيجيب لك<br />
+          كل اللي بتحبه لحد بيتك!
         </h1>
-        <p className="hero-desc">
-          تسوّق الآن أفضل المنتجات التكنولوجية والأجهزة الأصلية والأزياء من الولايات
-          المتحدة، ألمانيا، إنجلترا، واليابان. نحن نتكفل بكافة تفاصيل الشحن الدولي
-          والتخليص الجمركي ونوصلها لك مباشرة بأسهل طرق دفع محلية وبدون تعقيدات.
-        </p>
+
         <div className="hero-buttons">
           <button className="btn-primary" onClick={onExploreClick}>
             تسوق الآن
@@ -84,63 +52,74 @@ export const Hero: React.FC<HeroProps> = ({
         </div>
       </div>
 
-      {/* لوحة أحدث المنتجات */}
-      <div className="hero-latest-pane">
-        <div className="hero-latest-header">
-          <Clock size={16} />
-          <span>أحدث الإضافات</span>
+      {/* عرض أحدث المنتجات — Spotlight Showcase */}
+      <div className="showcase">
+        <div className="showcase-label">
+          <div className="showcase-label-pulse" />
+          <span>وصل حديثاً</span>
         </div>
 
-        <div className="hero-latest-cards">
+        <div className="showcase-stack">
           {latestProducts.map((product, idx) => (
             <div
               key={product.id}
-              className="hero-mini-card"
+              className={`showcase-card ${idx === 0 ? 'showcase-featured' : 'showcase-side'}`}
               style={{
                 opacity: visibleCards.includes(idx) ? 1 : 0,
                 transform: visibleCards.includes(idx)
-                  ? 'translateX(0) scale(1)'
-                  : 'translateX(30px) scale(0.95)',
-                transitionDelay: `${idx * 0.08}s`,
+                  ? 'translateY(0) scale(1)'
+                  : 'translateY(40px) scale(0.9)',
+                transition: `all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) ${idx * 0.15}s`,
+                zIndex: 10 - idx,
               }}
             >
-              {/* صورة المنتج */}
-              <div
-                className="hero-mini-card-img"
-                onClick={() => onProductClick(product)}
-              >
+              {/* Gradient border shimmer */}
+              <div className="showcase-card-glow" />
+
+              {/* Image */}
+              <div className="showcase-card-visual" onClick={() => onProductClick(product)}>
                 <img src={product.image} alt={product.title} />
+                <div className="showcase-card-shine" />
                 {product.tag && (
-                  <span className={`badge-tag ${product.tag.type}`} style={{ fontSize: '0.6rem', padding: '0.1rem 0.4rem' }}>
+                  <span className={`badge-tag ${product.tag.type}`} style={{ fontSize: '0.6rem', padding: '0.15rem 0.5rem' }}>
                     {product.tag.text}
                   </span>
                 )}
               </div>
 
-              {/* تفاصيل المنتج */}
-              <div className="hero-mini-card-info">
-                <span className="hero-mini-origin">✈️ {product.originCountry}</span>
-                <h4
-                  className="hero-mini-title"
-                  onClick={() => onProductClick(product)}
-                >
+              {/* Info */}
+              <div className="showcase-card-details">
+                <div className="showcase-card-row">
+                  <span className="showcase-card-country">✈️ {product.originCountry}</span>
+                  <div className="showcase-card-stars">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        size={10}
+                        style={{
+                          color: i < Math.floor(product.rating) ? '#FFD54F' : '#ddd',
+                          fill: i < Math.floor(product.rating) ? '#FFD54F' : 'none',
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <h4 className="showcase-card-name" onClick={() => onProductClick(product)}>
                   {product.title}
                 </h4>
 
-                <div className="hero-mini-footer">
-                  <div>
-                    <div className="hero-mini-rating">
-                      <Star size={11} style={{ color: '#FFD54F', fill: '#FFD54F' }} />
-                      <span>{product.rating}</span>
-                    </div>
-                    <span className="hero-mini-price">{product.price} ج.م</span>
+                <div className="showcase-card-action">
+                  <div className="showcase-card-pricing">
+                    <span className="showcase-card-price">{product.price.toLocaleString()}</span>
+                    <span className="showcase-card-currency">ج.م</span>
                   </div>
                   <button
-                    className="hero-mini-cart-btn"
+                    className="showcase-add-btn"
                     onClick={(e) => onAddToCart(product, e)}
-                    title="أضف إلى السلة"
+                    title="أضف للسلة"
                   >
-                    <ShoppingCart size={15} />
+                    <ShoppingCart size={13} />
                   </button>
                 </div>
               </div>
