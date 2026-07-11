@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Hero } from '../components/Hero';
 import { Categories } from '../components/Categories';
 import { ProductCard } from '../components/ProductCard';
-import type { Product } from '../data/products';
-import { CATEGORIES, PRODUCTS } from '../data/products';
+import type { ApiProduct } from '../types/api';
+import { useCategories } from '../hooks/useCategories';
+import { useProducts } from '../hooks/useProducts';
 import { HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -15,7 +16,7 @@ interface HomePageProps {
   searchQuery: string;
   favorites: string[];
   handleToggleFavorite: (id: string, e: React.MouseEvent) => void;
-  handleQuickAddToCart: (product: Product, e: React.MouseEvent) => void;
+  handleQuickAddToCart: (product: ApiProduct, e: React.MouseEvent) => void;
 }
 
 type Bubble = {
@@ -42,6 +43,21 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [hoveredDuck, setHoveredDuck] = useState<number | null>(null);
+
+  const { categories } = useCategories();
+  
+  const { products, loading: productsLoading } = useProducts({
+    pageNumber: 1,
+    pageSize: 50,
+    searchTerm: searchQuery || null,
+    categoryId: activeCategory !== 'all' ? Number(activeCategory) : null,
+  });
+
+  const { products: latestProducts } = useProducts({
+    pageNumber: 1,
+    pageSize: 4,
+    sortDescending: true,
+  });
 
   // Drag state: which duck is being dragged and its current screen position
   const [dragState, setDragState] = useState<{
@@ -105,11 +121,11 @@ export const HomePage: React.FC<HomePageProps> = ({
     }
   };
 
-  const filteredProducts = PRODUCTS.filter((product) => {
-    const matchesCategory = activeCategory === 'all' || product.categoryKey === activeCategory;
-    const matchesSearch = product.title.includes(searchQuery) || product.description.includes(searchQuery);
-    const matchesFav = !showOnlyFavs || favorites.includes(product.id);
-    return matchesCategory && matchesSearch && matchesFav;
+  // For favorites we do it on the client for now, assuming all products fits in one page
+  // A real implementation would send ?favorites=true to backend or fetch by IDs
+  const filteredProducts = products.filter((product) => {
+    const matchesFav = !showOnlyFavs || favorites.includes(product.id.toString());
+    return matchesFav;
   });
 
   return (
@@ -117,13 +133,14 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       <Hero
         onExploreClick={scrollToCatalog}
-        latestProducts={PRODUCTS.slice(-3)}
+        latestProducts={latestProducts}
         onAddToCart={handleQuickAddToCart}
         onProductClick={(prod) => navigate(`/product/${prod.id}`)}
       />
 
       <div id="explore-products" style={{ scrollMarginTop: '100px' }}>
         <Categories
+          categories={categories}
           activeCategory={activeCategory}
           onCategorySelect={(key) => {
             setActiveCategory(key);
@@ -138,14 +155,18 @@ export const HomePage: React.FC<HomePageProps> = ({
                 ? 'المنتجات المفضلة لديك' 
                 : activeCategory === 'all' 
                   ? 'منتجات البط المميزه' 
-                  : CATEGORIES.find(c => c.key === activeCategory)?.name}
+                  : categories.find(c => c.id.toString() === activeCategory)?.name || 'المنتجات'}
             </h2>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               تم العثور على {filteredProducts.length} منتج
             </span>
           </div>
 
-          {filteredProducts.length === 0 ? (
+          {productsLoading ? (
+            <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
+              <h3>جاري تحميل المنتجات...</h3>
+            </div>
+          ) : filteredProducts.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
               <HelpCircle size={48} style={{ margin: '0 auto 1rem', color: 'var(--primary-light)' }} />
               <h3>لم نعثر على أي منتجات تطابق بحثك!</h3>
@@ -159,8 +180,8 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <ProductCard
                   key={product.id}
                   product={product}
-                  isFavorite={favorites.includes(product.id)}
-                  onToggleFavorite={handleToggleFavorite}
+                  isFavorite={favorites.includes(product.id.toString())}
+                  onToggleFavorite={(id, e) => handleToggleFavorite(id.toString(), e)}
                   onAddToCart={handleQuickAddToCart}
                   onProductClick={(prod) => navigate(`/product/${prod.id}`)}
                 />

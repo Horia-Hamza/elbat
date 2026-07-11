@@ -1,13 +1,14 @@
 import React from 'react';
 import { Star, Heart, Plus } from 'lucide-react';
-import type { Product } from '../data/products';
+import type { ApiProduct } from '../types/api';
+import { IMAGES_BASE_URL } from '../api/client';
 
 interface ProductCardProps {
-  product: Product;
+  product: ApiProduct;
   isFavorite: boolean;
-  onToggleFavorite: (id: string, e: React.MouseEvent) => void;
-  onAddToCart: (product: Product, e: React.MouseEvent) => void;
-  onProductClick: (product: Product) => void;
+  onToggleFavorite: (id: number, e: React.MouseEvent) => void;
+  onAddToCart: (product: ApiProduct, e: React.MouseEvent) => void;
+  onProductClick: (product: ApiProduct) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -17,12 +18,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onAddToCart,
   onProductClick
 }) => {
+  const imageUrl = product.mainImageUrl
+    ? (product.mainImageUrl.startsWith('http') ? product.mainImageUrl : `${IMAGES_BASE_URL}${product.mainImageUrl}`)
+    : (product.images && product.images.length > 0
+        ? (() => {
+            const u = product.images[0].imageUrl || product.images[0].url || '';
+            return u ? (u.startsWith('http') ? u : `${IMAGES_BASE_URL}${u}`) : '/logo.png';
+          })()
+        : '/logo.png');
+
   return (
     <div className="product-card">
       {/* شارة الخصم أو المنتج الجديد */}
-      {product.tag && (
-        <span className={`badge-tag ${product.tag.type}`}>
-          {product.tag.text}
+      {product.isFeatured && (
+        <span className="badge-tag new">
+          مميز
         </span>
       )}
 
@@ -38,8 +48,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* صورة المنتج */}
       <div className="product-img-wrapper" onClick={() => onProductClick(product)}>
         <img
-          src={product.image}
-          alt={product.title}
+          src={imageUrl}
+          alt={product.name}
           className="product-img"
           loading="lazy"
         />
@@ -48,30 +58,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* تفاصيل المنتج */}
       <div className="product-info">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-          <span className="product-category">{product.category}</span>
-          <span style={{ fontSize: '0.7rem', backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: 'bold' }}>
-            ✈️ مستورد من {product.originCountry}
-          </span>
+          <span className="product-category">{product.subCategory?.name || 'تصنيف'}</span>
         </div>
         <h3 className="product-card-title" onClick={() => onProductClick(product)}>
-          {product.title}
+          {product.name}
         </h3>
 
         {/* التقييم */}
         <div className="product-rating">
           <Star className="star-icon" size={14} />
           <span className="rating-count">
-            {product.rating} ({product.reviewsCount} تقييم)
+            {product.averageRating || 0} ({product.reviewCount || 0} تقييم)
           </span>
         </div>
 
         {/* السعر وزر الإضافة */}
         <div className="product-footer">
           <div className="price-box">
-            {product.oldPrice && (
-              <span className="price-old">{product.oldPrice} ج.م</span>
+            {product.salePrice && product.salePrice < product.basePrice ? (
+              <>
+                <span className="price-old">{product.basePrice} ج.م</span>
+                <span className="price-current">{product.salePrice} ج.م</span>
+              </>
+            ) : (
+              <span className="price-current">{product.basePrice} ج.م</span>
             )}
-            <span className="price-current">{product.price} ج.م</span>
           </div>
 
           <button

@@ -1,13 +1,14 @@
 import React, { useRef } from 'react';
 import * as Icons from 'lucide-react';
-import { CATEGORIES } from '../data/products';
+import type { Category } from '../types/api';
 
 interface CategoriesProps {
+  categories: Category[];
   activeCategory: string;
   onCategorySelect: (key: string) => void;
 }
 
-export const Categories: React.FC<CategoriesProps> = ({ activeCategory, onCategorySelect }) => {
+export const Categories: React.FC<CategoriesProps> = ({ categories, activeCategory, onCategorySelect }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
@@ -32,15 +33,25 @@ export const Categories: React.FC<CategoriesProps> = ({ activeCategory, onCatego
         </button>
 
         <div className="categories-grid" ref={scrollRef}>
-          {CATEGORIES.map((cat) => {
-            const IconComponent = (Icons as any)[cat.icon] || Icons.HelpCircle;
-            const isActive = activeCategory === cat.key;
+          <div
+            className={`category-card ${activeCategory === 'all' ? 'active' : ''}`}
+            onClick={() => onCategorySelect('all')}
+          >
+            <div className="category-icon-wrapper">
+              <Icons.LayoutGrid size={24} />
+            </div>
+            <span className="category-name">كل المنتجات</span>
+          </div>
+          
+          {categories.map((cat) => {
+            const IconComponent = Icons.Folder; // Fallback since API doesn't have icons
+            const isActive = activeCategory === cat.id.toString();
             
             return (
               <div
-                key={cat.key}
+                key={cat.id.toString()}
                 className={`category-card ${isActive ? 'active' : ''}`}
-                onClick={() => onCategorySelect(cat.key)}
+                onClick={() => onCategorySelect(cat.id.toString())}
               >
                 <div className="category-icon-wrapper">
                   <IconComponent size={24} />

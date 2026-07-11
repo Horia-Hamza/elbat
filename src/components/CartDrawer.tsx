@@ -1,10 +1,11 @@
 import React from 'react';
 import { X, Trash2, Plus, Minus, ShoppingBag, CreditCard } from 'lucide-react';
-import type { Product } from '../data/products';
+import type { ApiProduct } from '../types/api';
+import { IMAGES_BASE_URL } from '../api/client';
 
 export interface CartItem {
   id: string; // المعرف الفريد متضمناً اللون والمقاس
-  product: Product;
+  product: ApiProduct;
   quantity: number;
   color?: string;
   size?: string;
@@ -27,9 +28,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onRemoveItem,
   onCheckoutOpen
 }) => {
-  // حساب المجموع الفرعي
-  const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const shippingFee = subtotal > 5000 || subtotal === 0 ? 0 : 250; // شحن دولي مجاني لأكثر من 5000 جنيه
+  const getProductImage = (p: ApiProduct) => {
+    if (p.mainImageUrl) {
+      return p.mainImageUrl.startsWith('http') ? p.mainImageUrl : `${IMAGES_BASE_URL}${p.mainImageUrl}`;
+    }
+    if (p.images && p.images.length > 0) {
+      const u = p.images[0].imageUrl || p.images[0].url || '';
+      return u ? (u.startsWith('http') ? u : `${IMAGES_BASE_URL}${u}`) : '/logo.png';
+    }
+    return '/logo.png';
+  };
+
+  // حساب المجموع الفرعي (للتوافق مع العرض المتبقي في الفوتر)
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.product.salePrice || item.product.basePrice) * item.quantity, 0);
+  const shippingFee = subtotal > 5000 || subtotal === 0 ? 0 : 250; 
   const total = subtotal + shippingFee;
 
   return (
@@ -73,8 +85,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 {/* صورة المنتج */}
                 <div className="cart-item-img-wrapper">
                   <img
-                    src={item.product.image}
-                    alt={item.product.title}
+                    src={getProductImage(item.product)}
+                    alt={item.product.name}
                     className="cart-item-img"
                   />
                 </div>
@@ -82,7 +94,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 {/* تفاصيل العنصر */}
                 <div className="cart-item-details">
                   <div>
-                    <h4 className="cart-item-title">{item.product.title}</h4>
+                    <h4 className="cart-item-title">{item.product.name}</h4>
                     <span className="cart-item-meta">
                       {item.color && (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '10px' }}>
@@ -123,7 +135,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     </div>
 
                     <span className="cart-item-price">
-                      {item.product.price * item.quantity} ج.م
+                      {(item.product.salePrice || item.product.basePrice) * item.quantity} ج.م
                     </span>
 
                     {/* زر الحذف */}

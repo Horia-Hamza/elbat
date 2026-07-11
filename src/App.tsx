@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom';
 import { Header } from './components/Header';
 import { CartDrawer } from './components/CartDrawer';
 import type { CartItem } from './components/CartDrawer';
@@ -7,13 +7,80 @@ import { CheckoutModal } from './components/CheckoutModal';
 import { OrderTracker } from './components/OrderTracker';
 import { Toast } from './components/Toast';
 import type { ToastMessage } from './components/Toast';
-import { PRODUCTS } from './data/products';
-import type { Product } from './data/products';
+import type { ApiProduct } from './types/api';
 import { HomePage } from './pages/HomePage';
 import { ProductDetailsPage } from './pages/ProductDetailsPage';
+import { PaymentSuccessPage } from './pages/PaymentSuccessPage';
+import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { ConfirmEmailPage } from './pages/ConfirmEmailPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { ChangePasswordPage } from './pages/ChangePasswordPage';
+import BundleCheckoutPage from './pages/checkout/BundleCheckoutPage';
 
+// Policy pages
+import { PrivacyPolicy } from './pages/policies/PrivacyPolicy';
+import { RefundPolicy } from './pages/policies/RefundPolicy';
+import { TermsConditions } from './pages/policies/TermsConditions';
+import { ShippingPolicy } from './pages/policies/ShippingPolicy';
+
+// Components
+import { WhatsAppButton } from './components/WhatsAppButton';
+
+// Tracking utilities
+import { initTracking, trackPageView, trackAddToCart, trackInitiateCheckout, trackPurchase } from './utils/tracking';
+
+// Store settings
+import { getStoreSettings } from './utils/storeSettings';
+
+// Admin imports
+import { AdminLayout } from './layouts/AdminLayout';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { AdminProducts } from './pages/admin/AdminProducts';
+import { AdminCategories } from './pages/admin/AdminCategories';
+import { AdminOrders } from './pages/admin/AdminOrders';
+import { AdminBrands } from './pages/admin/AdminBrands';
+import { AdminSubCategories } from './pages/admin/AdminSubCategories';
+import { AdminPageDesigns } from './pages/admin/AdminPageDesigns';
+import { AdminShippingZones } from './pages/admin/AdminShippingZones';
+import { AdminShippingAddresses } from './pages/admin/AdminShippingAddresses';
+
+import { cartApi } from './api/cart';
+import { wishlistApi } from './api/wishlist';
+
+const getUserIdFromToken = (): string => {
+  const token = localStorage.getItem('elbat_token');
+  if (!token) return 'string';
+  try {
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const payload = JSON.parse(jsonPayload);
+      return (
+        payload.nameid ||
+        payload.sub ||
+        payload.id ||
+        payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
+        'string'
+      );
+    }
+  } catch (e) {
+    console.error('Failed to parse token payload:', e);
+  }
+  return 'string';
+};
 
 function App() {
+  const storeSettings = getStoreSettings();
+
   // الحالات العامة للتطبيق (State)
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
     const saved = localStorage.getItem('elbat_cart');
@@ -29,15 +96,33 @@ function App() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [showOnlyFavs, setShowOnlyFavs] = useState(false);
 
-  // حالات فتح النوافذ المنبثقة
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  
-  // حالة تتبع الطلب النشط
   const [activeOrder, setActiveOrder] = useState<{ id: string; customerName: string } | null>(null);
-
-  // الإشعارات المنبثقة (Toasts)
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const location = useLocation();
+
+  // Initialize Meta and TikTok Pixels
+  useEffect(() => {
+    initTracking();
+  }, []);
+
+  // Track page views on route changes
+  useEffect(() => {
+    trackPageView();
+  }, [location]);
+
+  // Track checkout initiation
+  useEffect(() => {
+    if (isCheckoutOpen && cartItems.length > 0) {
+      trackInitiateCheckout(
+        cartItems.map(item => ({
+          product: { id: item.product.id, price: item.product.salePrice !== null && item.product.salePrice !== undefined ? item.product.salePrice : item.product.basePrice },
+          quantity: item.quantity
+        }))
+      );
+    }
+  }, [isCheckoutOpen]);
 
   // حفظ التغييرات في LocalStorage تلقائياً
   useEffect(() => {
@@ -47,6 +132,97 @@ function App() {
   useEffect(() => {
     localStorage.setItem('elbat_favs', JSON.stringify(favorites));
   }, [favorites]);
+
+  const syncCartToBackend = async () => {
+    const token = localStorage.getItem('elbat_token');
+    if (!token) return;
+    const localCartStr = localStorage.getItem('cart');
+    if (!localCartStr) return;
+    try {
+      const localCart = JSON.parse(localCartStr);
+      if (Array.isArray(localCart) && localCart.length > 0) {
+        const decodedUserId = getUserIdFromToken();
+        // Sync each item to backend API
+        for (const item of localCart) {
+          try {
+            await cartApi.addToCart({
+              userId: decodedUserId,
+              productId: item.productId,
+              variantId: item.variantId || null,
+              quantity: item.quantity,
+            });
+          } catch (e) {
+            console.error('Error syncing item to cart API:', e);
+          }
+        }
+        // Clear local cart
+        localStorage.setItem('cart', JSON.stringify([]));
+      }
+    } catch (e) {
+      console.error('Error parsing cart from localStorage:', e);
+    }
+  };
+
+  const syncWishlistToBackend = async () => {
+    const token = localStorage.getItem('elbat_token');
+    if (!token) return;
+    const localWishlistStr = localStorage.getItem('wishlist');
+    if (!localWishlistStr) return;
+    try {
+      const localWishlist = JSON.parse(localWishlistStr);
+      if (Array.isArray(localWishlist) && localWishlist.length > 0) {
+        const decodedUserId = getUserIdFromToken();
+        // Sync each item to backend API
+        for (const item of localWishlist) {
+          try {
+            await wishlistApi.addToWishlist({
+              userId: decodedUserId,
+              productId: Number(item.productId),
+            });
+          } catch (e) {
+            console.error('Error syncing item to wishlist API:', e);
+          }
+        }
+        // Clear local wishlist
+        localStorage.setItem('wishlist', JSON.stringify([]));
+      }
+    } catch (e) {
+      console.error('Error parsing wishlist from localStorage:', e);
+    }
+  };
+
+  const fetchWishlistFromServer = async () => {
+    const token = localStorage.getItem('elbat_token');
+    if (!token) return;
+    try {
+      const decodedUserId = getUserIdFromToken();
+      const items = await wishlistApi.getWishlistByUser(decodedUserId);
+      if (Array.isArray(items)) {
+        const serverProductIds = items.map(item => String(item.productId));
+        setFavorites((prev) => {
+          const hasNew = serverProductIds.some(id => !prev.includes(id));
+          if (hasNew) {
+            return Array.from(new Set([...prev, ...serverProductIds]));
+          }
+          return prev;
+        });
+      }
+    } catch (e) {
+      console.error('Error fetching wishlist from server:', e);
+    }
+  };
+
+  useEffect(() => {
+    syncCartToBackend();
+    syncWishlistToBackend();
+    fetchWishlistFromServer();
+    const interval = setInterval(() => {
+      syncCartToBackend();
+      syncWishlistToBackend();
+      fetchWishlistFromServer();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // إرسال تنبيه منبثق جديد
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -59,27 +235,85 @@ function App() {
   };
 
   // التحكم في السلة
-  const handleAddToCart = (product: Product, quantity: number = 1, color?: string, size?: string) => {
+  const handleAddToCart = (product: ApiProduct, quantity: number = 1, color?: string, size?: string) => {
+    const priceVal = product.salePrice !== null && product.salePrice !== undefined ? product.salePrice : product.basePrice;
+    trackAddToCart({ id: product.id, name: product.name, price: priceVal }, quantity);
+
     const itemId = `${product.id}_${color || 'none'}_${size || 'none'}`;
     
+    // Resolve variantId
+    let variantId = 0;
+    if (product.variants && product.variants.length > 0) {
+      const matched = product.variants.find(v => 
+        (!color || v.color === color) && 
+        (!size || v.size === size)
+      );
+      if (matched) {
+        variantId = matched.id;
+      } else {
+        variantId = product.variants[0].id;
+      }
+    }
+
+    // Store in localStorage under the key 'cart'
+    const currentUserId = localStorage.getItem('elbat_token') ? getUserIdFromToken() : 'string';
+    const localCartStr = localStorage.getItem('cart');
+    let localCartArray: any[] = [];
+    try {
+      localCartArray = localCartStr ? JSON.parse(localCartStr) : [];
+      if (!Array.isArray(localCartArray)) {
+        localCartArray = [];
+      }
+    } catch {
+      localCartArray = [];
+    }
+
+    const existingIndex = localCartArray.findIndex(item => 
+      item.productId === product.id && 
+      item.variantId === variantId
+    );
+
+    if (existingIndex > -1) {
+      localCartArray[existingIndex].quantity += quantity;
+      localCartArray[existingIndex].userId = currentUserId;
+    } else {
+      localCartArray.push({
+        userId: currentUserId,
+        productId: product.id,
+        variantId: variantId,
+        quantity: quantity
+      });
+    }
+    localStorage.setItem('cart', JSON.stringify(localCartArray));
+
+    // Immediately trigger backend sync if token is present
+    syncCartToBackend();
+
+    // Show toast outside of state updater to prevent double execution in StrictMode
+    const existing = cartItems.find((item) => item.id === itemId);
+    if (existing) {
+      showToast(`تم تحديث كمية "${product.name}" في السلة!`);
+    } else {
+      showToast(`تمت إضافة "${product.name}" إلى السلة بنجاح!`);
+    }
+
+    // Normal state update
     setCartItems((prevItems) => {
-      const existing = prevItems.find((item) => item.id === itemId);
-      if (existing) {
-        showToast(`تم تحديث كمية "${product.title}" في السلة!`);
+      const isExisting = prevItems.some((item) => item.id === itemId);
+      if (isExisting) {
         return prevItems.map((item) => 
           item.id === itemId ? { ...item, quantity: item.quantity + quantity } : item
         );
       }
-      showToast(`تمت إضافة "${product.title}" إلى السلة بنجاح!`);
       return [...prevItems, { id: itemId, product, quantity, color, size }];
     });
   };
 
   // إضافة سريعة من البطاقة
-  const handleQuickAddToCart = (product: Product, e: React.MouseEvent) => {
+  const handleQuickAddToCart = (product: ApiProduct, e: React.MouseEvent) => {
     e.stopPropagation();
-    const defaultColor = product.colors && product.colors.length > 0 ? product.colors[0] : undefined;
-    const defaultSize = product.sizes && product.sizes.length > 0 ? product.sizes[0] : undefined;
+    const defaultColor = product.variants && product.variants.length > 0 ? product.variants[0].color || undefined : undefined;
+    const defaultSize = product.variants && product.variants.length > 0 ? product.variants[0].size || undefined : undefined;
     handleAddToCart(product, 1, defaultColor, defaultSize);
   };
 
@@ -88,37 +322,131 @@ function App() {
     setCartItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, quantity: qty } : item))
     );
+
+    // Update 'cart' in localStorage
+    try {
+      const item = cartItems.find((i) => i.id === id);
+      if (item) {
+        let variantId = 0;
+        if (item.product.variants && item.product.variants.length > 0) {
+          const matched = item.product.variants.find(v => 
+            (!item.color || v.color === item.color) && 
+            (!item.size || v.size === item.size)
+          );
+          if (matched) variantId = matched.id;
+        }
+
+        const localCartStr = localStorage.getItem('cart');
+        if (localCartStr) {
+          let localCart = JSON.parse(localCartStr);
+          if (Array.isArray(localCart)) {
+            const idx = localCart.findIndex(li => li.productId === item.product.id && li.variantId === variantId);
+            if (idx > -1) {
+              localCart[idx].quantity = qty;
+              localStorage.setItem('cart', JSON.stringify(localCart));
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleRemoveCartItem = (id: string) => {
     const item = cartItems.find((i) => i.id === id);
     setCartItems((prev) => prev.filter((i) => i.id !== id));
     if (item) {
-      showToast(`تمت إزالة "${item.product.title}" من السلة.`, 'error');
+      showToast(`تمت إزالة "${item.product.name}" من السلة.`, 'error');
+
+      // Update 'cart' in localStorage
+      try {
+        let variantId = 0;
+        if (item.product.variants && item.product.variants.length > 0) {
+          const matched = item.product.variants.find(v => 
+            (!item.color || v.color === item.color) && 
+            (!item.size || v.size === item.size)
+          );
+          if (matched) variantId = matched.id;
+        }
+
+        const localCartStr = localStorage.getItem('cart');
+        if (localCartStr) {
+          let localCart = JSON.parse(localCartStr);
+          if (Array.isArray(localCart)) {
+            localCart = localCart.filter(li => !(li.productId === item.product.id && li.variantId === variantId));
+            localStorage.setItem('cart', JSON.stringify(localCart));
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
     }
   };
 
   // التحكم في المفضلة
   const handleToggleFavorite = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setFavorites((prev) => {
-      const isFav = prev.includes(id);
-      const prod = PRODUCTS.find((p) => p.id === id);
-      if (isFav) {
-        showToast(`تمت إزالة "${prod?.title}" من المفضلة.`, 'error');
-        return prev.filter((favId) => favId !== id);
-      } else {
-        showToast(`تمت إضافة "${prod?.title}" إلى المفضلة!`);
-        return [...prev, id];
+    const isFav = favorites.includes(id);
+    if (isFav) {
+      showToast(`تمت الإزالة من المفضلة.`, 'error');
+      setFavorites((prev) => prev.filter((favId) => favId !== id));
+    } else {
+      showToast(`تمت الإضافة إلى المفضلة!`);
+      
+      // Add to offline wishlist queue in localStorage under the key 'wishlist'
+      try {
+        const currentUserId = localStorage.getItem('elbat_token') ? getUserIdFromToken() : 'string';
+        const localWishlistStr = localStorage.getItem('wishlist');
+        let localWishlistArray: any[] = [];
+        if (localWishlistStr) {
+          localWishlistArray = JSON.parse(localWishlistStr);
+        }
+        if (!Array.isArray(localWishlistArray)) {
+          localWishlistArray = [];
+        }
+        
+        // Avoid duplicate entries in the queue
+        const exists = localWishlistArray.some(item => item.productId === Number(id));
+        if (!exists) {
+          localWishlistArray.push({
+            userId: currentUserId,
+            productId: Number(id)
+          });
+          localStorage.setItem('wishlist', JSON.stringify(localWishlistArray));
+        }
+      } catch (err) {
+        console.error('Error writing wishlist to localStorage:', err);
       }
-    });
+
+      // Trigger immediate sync
+      syncWishlistToBackend();
+
+      setFavorites((prev) => [...prev, id]);
+    }
   };
 
   // إتمام الدفع بنجاح
   const handleCheckoutSuccess = (orderId: string, customerName: string) => {
+    trackPurchase(
+      orderId,
+      cartItems.map(item => ({
+        product: { id: item.product.id, price: item.product.salePrice !== null && item.product.salePrice !== undefined ? item.product.salePrice : item.product.basePrice },
+        quantity: item.quantity
+      }))
+    );
+
     setActiveOrder({ id: orderId, customerName });
     setCartItems([]); // تفريغ السلة
     setIsCheckoutOpen(false);
+    // Clear localStorage cart too
+    localStorage.setItem('cart', JSON.stringify([]));
+  };
+
+  // شراء الآن — يضيف المنتج للسلة ثم يفتح الدفع مباشرة
+  const handleBuyNow = (product: import('./types/api').ApiProduct, quantity: number, color?: string, size?: string) => {
+    handleAddToCart(product, quantity, color, size);
+    setIsCheckoutOpen(true);
   };
 
 
@@ -147,153 +475,283 @@ function App() {
   const cartTotalCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <>
-      {/* الترويسة وشريط التنقل */}
-      <Header
-        cartCount={cartTotalCount}
-        favCount={favorites.length}
-        searchQuery={searchQuery}
-        onSearchChange={(val) => {
-          setSearchQuery(val);
-          scrollToCatalog();
-        }}
-        onCartOpen={() => setIsCartOpen(true)}
-        showOnlyFavs={showOnlyFavs}
-        onToggleFavs={() => {
-          setShowOnlyFavs(!showOnlyFavs);
-          scrollToCatalog();
-        }}
-      />
+    <Routes>
+      {/* ====================================================
+          ADMIN DASHBOARD ROUTES 
+          ==================================================== */}
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminDashboard />} />
+        <Route path="products" element={<AdminProducts />} />
+        <Route path="page-designs" element={<AdminPageDesigns />} />
+        <Route path="page-designs/:productId" element={<AdminPageDesigns />} />
+        <Route path="categories" element={<AdminCategories />} />
+        <Route path="subcategories" element={<AdminSubCategories />} />
+        <Route path="brands" element={<AdminBrands />} />
+        <Route path="orders" element={<AdminOrders />} />
+        <Route path="shipping" element={<AdminShippingZones />} />
+        <Route path="addresses" element={<AdminShippingAddresses />} />
+      </Route>
 
-      {/* محتوى الصفحات الديناميكي (التنقل) */}
-      <div style={{ flexGrow: 1 }}>
-        <Routes>
-          <Route 
-            path="/" 
-            element={
-              <HomePage 
-                activeCategory={activeCategory}
-                setActiveCategory={setActiveCategory}
-                showOnlyFavs={showOnlyFavs}
-                setShowOnlyFavs={setShowOnlyFavs}
-                searchQuery={searchQuery}
-                favorites={favorites}
-                handleToggleFavorite={handleToggleFavorite}
-                handleQuickAddToCart={handleQuickAddToCart}
-              />
-            } 
+      {/* ====================================================
+          PAYMENT CALLBACK — standalone, no header/footer
+          ==================================================== */}
+      <Route path="/payment/success" element={<PaymentSuccessPage />} />
+      <Route path="/payment/callback" element={<PaymentSuccessPage />} />
+
+      {/* ====================================================
+          CONSUMER STOREFRONT ROUTES 
+          ==================================================== */}
+      <Route path="/*" element={
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+          <Header
+            cartCount={cartTotalCount}
+            favCount={favorites.length}
+            searchQuery={searchQuery}
+            onSearchChange={(val) => {
+              setSearchQuery(val);
+              scrollToCatalog();
+            }}
+            onCartOpen={() => setIsCartOpen(true)}
+            showOnlyFavs={showOnlyFavs}
+            onToggleFavs={() => {
+              setShowOnlyFavs(!showOnlyFavs);
+              scrollToCatalog();
+            }}
           />
-          <Route 
-            path="/product/:id" 
-            element={<ProductDetailsPage onAddToCart={handleAddToCart} />} 
-          />
-        </Routes>
-      </div>
 
-      {/* ذيل الصفحة الراقي (Footer) */}
-      <footer style={{ backgroundColor: 'var(--primary-dark)', color: 'white', marginTop: 'auto', borderTopRightRadius: 'var(--radius-lg)', borderTopLeftRadius: 'var(--radius-lg)' }}>
-        <div className="section-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2.5rem', padding: '4rem 2rem 2rem' }}>
-          
-          {/* العمود 1: حول المتجر */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <img src="/logo.png" alt="شعار المتجر في الأسفل" style={{ width: '40px', height: '40px' }} />
-              <span style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--secondary)' }}>متجر البطّ</span>
-            </div>
-            <p style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)', lineHeight: '1.8' }}>
-              منصتك الإلكترونية الأولى لشراء المنتجات الأصلية من أشهر الماركات العالمية وشحنها مباشرة إلى مصر مع تخليص جمركي متكامل ودعم الدفع المحلي بالكامل.
-            </p>
-          </div>
-
-          {/* العمود 2: روابط سريعة */}
-          <div>
-            <h4 style={{ color: 'var(--secondary)', marginBottom: '1.2rem', fontWeight: '700' }}>روابط مهمة</h4>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.8)' }}>
-              <li><a href="#explore-products" onClick={(e) => { e.preventDefault(); scrollToCatalog(); }} style={{ transition: 'var(--transition)' }}>تصفح كافة المنتجات</a></li>
-              <li><a href="#" style={{ transition: 'var(--transition)' }}>سياسة الاستبدال والاسترجاع</a></li>
-              <li><a href="#" style={{ transition: 'var(--transition)' }}>شروط الاستخدام والخصوصية</a></li>
-              <li><a href="#" style={{ transition: 'var(--transition)' }}>الأسئلة الشائعة والمساعدة</a></li>
-            </ul>
-          </div>
-
-          {/* العمود 3: تواصل معنا */}
-          <div>
-            <h4 style={{ color: 'var(--secondary)', marginBottom: '1.2rem', fontWeight: '700' }}>تواصل معنا</h4>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.8)' }}>
-              <li>📍 القاهرة، جمهورية مصر العربية</li>
-              <li>📧 support@elbat.com</li>
-              <li>📞 02-3456789</li>
-              <li style={{ marginTop: '0.5rem', display: 'flex', gap: '0.8rem' }}>
-                <span title="تويتر" style={{ cursor: 'pointer' }}>🐦</span>
-                <span title="انستغرام" style={{ cursor: 'pointer' }}>📸</span>
-                <span title="سناب شات" style={{ cursor: 'pointer' }}>👻</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* العمود 4: النشرة الإخبارية */}
-          <div>
-            <h4 style={{ color: 'var(--secondary)', marginBottom: '1.2rem', fontWeight: '700' }}>انضم لعائلة البطّ</h4>
-            <p style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)', marginBottom: '0.8rem' }}>
-              اشترك في قائمتنا البريدية للحصول على خصومات وعروض حصرية لمنتجات البط!
-            </p>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <input 
-                type="email" 
-                placeholder="بريدك الإلكتروني" 
-                style={{ flexGrow: 1, padding: '0.5rem 0.8rem', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', outline: 'none' }}
+          <div style={{ flexGrow: 1 }}>
+            <Routes>
+              <Route 
+                path="/" 
+                element={
+                  <HomePage 
+                    activeCategory={activeCategory}
+                    setActiveCategory={setActiveCategory}
+                    showOnlyFavs={showOnlyFavs}
+                    setShowOnlyFavs={setShowOnlyFavs}
+                    searchQuery={searchQuery}
+                    favorites={favorites}
+                    handleToggleFavorite={handleToggleFavorite}
+                    handleQuickAddToCart={handleQuickAddToCart}
+                  />
+                } 
               />
-              <button 
-                className="btn-primary" 
-                style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderRadius: 'var(--radius-sm)', boxShadow: 'none' }}
-                onClick={() => showToast("شكراً للاشتراك بنجاح! 🎉")}
-              >
-                اشتراك
-              </button>
-            </div>
+              <Route 
+                path="/product/:id" 
+                element={
+                  <ProductDetailsPage 
+                    onAddToCart={handleAddToCart} 
+                    onQuickAddToCart={handleQuickAddToCart}
+                    onBuyNow={handleBuyNow}
+                    favorites={favorites}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
+                } 
+              />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/confirm-email" element={<ConfirmEmailPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/change-password" element={<ChangePasswordPage />} />
+              <Route path="/bundle-checkout" element={<BundleCheckoutPage />} />
+              
+              {/* Policies */}
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/refund-policy" element={<RefundPolicy />} />
+              <Route path="/terms-conditions" element={<TermsConditions />} />
+              <Route path="/shipping-policy" element={<ShippingPolicy />} />
+            </Routes>
           </div>
 
+          <footer style={{ backgroundColor: 'var(--primary-dark)', color: 'white', marginTop: 'auto', borderTopRightRadius: 'var(--radius-lg)', borderTopLeftRadius: 'var(--radius-lg)' }}>
+            <div className="section-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2.5rem', padding: '4rem 2rem 2rem' }}>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <img src="/logo.png" alt="شعار المتجر في الأسفل" style={{ width: '40px', height: '40px' }} />
+                  <span style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--secondary)' }}>متجر البطّ</span>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)', lineHeight: '1.8' }}>
+                  منصتك الإلكترونية الأولى لشراء المنتجات الأصلية من أشهر الماركات العالمية وشحنها مباشرة إلى مصر مع تخليص جمركي متكامل ودعم الدفع المحلي بالكامل.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: 'var(--secondary)', marginBottom: '1.2rem', fontWeight: '700' }}>روابط مهمة</h4>
+                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.8)' }}>
+                  <li><a href="#explore-products" onClick={(e) => { e.preventDefault(); scrollToCatalog(); }} style={{ transition: 'var(--transition)' }}>تصفح كافة المنتجات</a></li>
+                  <li><Link to="/refund-policy" style={{ transition: 'var(--transition)' }}>سياسة الاستبدال والاسترجاع</Link></li>
+                  <li><Link to="/privacy-policy" style={{ transition: 'var(--transition)' }}>سياسة الخصوصية</Link></li>
+                  <li><Link to="/terms-conditions" style={{ transition: 'var(--transition)' }}>الشروط والأحكام</Link></li>
+                  <li><Link to="/shipping-policy" style={{ transition: 'var(--transition)' }}>سياسة الشحن والتوصيل</Link></li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 style={{ color: 'var(--secondary)', marginBottom: '1.2rem', fontWeight: '700' }}>تواصل معنا</h4>
+                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.8)' }}>
+                  <li>📍 القاهرة، جمهورية مصر العربية</li>
+                  <li>📧 {storeSettings.email}</li>
+                  <li>📞 {storeSettings.phone}</li>
+                  <li style={{ marginTop: '0.8rem', display: 'flex', gap: '0.75rem' }}>
+                    <a 
+                      href={storeSettings.facebook} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      title="فيسبوك" 
+                      style={{ 
+                        color: 'rgba(255, 255, 255, 0.8)', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        width: '36px', 
+                        height: '36px', 
+                        borderRadius: '50%', 
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)', 
+                        transition: 'all 0.3s ease' 
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#1877F2';
+                        e.currentTarget.style.color = '#fff';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                      </svg>
+                    </a>
+                    <a 
+                      href={storeSettings.instagram} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      title="انستغرام" 
+                      style={{ 
+                        color: 'rgba(255, 255, 255, 0.8)', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        width: '36px', 
+                        height: '36px', 
+                        borderRadius: '50%', 
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)', 
+                        transition: 'all 0.3s ease' 
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#E1306C';
+                        e.currentTarget.style.color = '#fff';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                      </svg>
+                    </a>
+                    <a 
+                      href={storeSettings.tiktok} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      title="تيك توك" 
+                      style={{ 
+                        color: 'rgba(255, 255, 255, 0.8)', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        width: '36px', 
+                        height: '36px', 
+                        borderRadius: '50%', 
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)', 
+                        transition: 'all 0.3s ease' 
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#000000';
+                        e.currentTarget.style.color = '#fff';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                        <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.05 1.72 4.13 1.12 1.09 2.66 1.62 4.2 1.65v3.91c-1.28-.02-2.54-.37-3.64-1.04-.63-.38-1.18-.89-1.61-1.5-.04 2.82.04 5.64-.02 8.46-.07 1.83-.75 3.65-2.03 4.96-1.57 1.58-3.9 2.45-6.14 2.19-2.6-.29-4.88-2.22-5.46-4.78-.71-2.94.75-6.22 3.48-7.39.81-.35 1.7-.51 2.58-.48v3.95c-.75-.12-1.55.12-2.08.68-.69.69-.76 1.87-.14 2.64.53.68 1.48.97 2.29.62.63-.26 1.05-.88 1.09-1.56.09-3.72.03-7.44.06-11.16-.01-.39.02-.79.03-1.18z"/>
+                      </svg>
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 style={{ color: 'var(--secondary)', marginBottom: '1.2rem', fontWeight: '700' }}>انضم لعائلة البطّ</h4>
+                <p style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)', marginBottom: '0.8rem' }}>
+                  اشترك في قائمتنا البريدية للحصول على خصومات وعروض حصرية لمنتجات البط!
+                </p>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <input 
+                    type="email" 
+                    placeholder="بريدك الإلكتروني" 
+                    style={{ flexGrow: 1, padding: '0.5rem 0.8rem', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', outline: 'none' }}
+                  />
+                  <button 
+                    className="btn-primary" 
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderRadius: 'var(--radius-sm)', boxShadow: 'none' }}
+                    onClick={() => showToast("شكراً للاشتراك بنجاح! 🎉")}
+                  >
+                    اشتراك
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'center', padding: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+              جميع الحقوق محفوظة © {new Date().getFullYear()} لمتجر البطّ. صنع بكل 💛 لتسهيل تسوقك.
+            </div>
+          </footer>
+
+          <CartDrawer
+            isOpen={isCartOpen}
+            onClose={() => setIsCartOpen(false)}
+            cartItems={cartItems}
+            onUpdateQuantity={handleUpdateCartQuantity}
+            onRemoveItem={handleRemoveCartItem}
+            onCheckoutOpen={() => {
+              setIsCartOpen(false);
+              setIsCheckoutOpen(true);
+            }}
+          />
+
+          <CheckoutModal
+            isOpen={isCheckoutOpen}
+            onClose={() => setIsCheckoutOpen(false)}
+            cartItems={cartItems}
+            onCheckoutSuccess={handleCheckoutSuccess}
+          />
+
+          <OrderTracker
+            isOpen={activeOrder !== null}
+            orderId={activeOrder?.id || ''}
+            customerName={activeOrder?.customerName || ''}
+            onClose={() => setActiveOrder(null)}
+          />
+
+          <Toast toasts={toasts} onClose={removeToast} />
+          <WhatsAppButton />
         </div>
-
-        <div style={{ textAlign: 'center', padding: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.5)' }}>
-          جميع الحقوق محفوظة © {new Date().getFullYear()} لمتجر البطّ. صنع بكل 💛 لتسهيل تسوقك.
-        </div>
-      </footer>
-
-      {/* المكونات المنبثقة والسحب (Modals & Drawers) */}
-
-      {/* سلة المشتريات الجانبية */}
-      <CartDrawer
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cartItems={cartItems}
-        onUpdateQuantity={handleUpdateCartQuantity}
-        onRemoveItem={handleRemoveCartItem}
-        onCheckoutOpen={() => {
-          setIsCartOpen(false);
-          setIsCheckoutOpen(true);
-        }}
-      />
-
-      {/* شاشة الدفع والتأكيد */}
-      <CheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        cartItems={cartItems}
-        onCheckoutSuccess={handleCheckoutSuccess}
-      />
-
-      {/* شاشة تتبع حالة الطلب الحية الاحتفالية */}
-      <OrderTracker
-        isOpen={activeOrder !== null}
-        orderId={activeOrder?.id || ''}
-        customerName={activeOrder?.customerName || ''}
-        onClose={() => setActiveOrder(null)}
-      />
-
-      {/* نظام التنبيهات العام */}
-      <Toast toasts={toasts} onClose={removeToast} />
-    </>
+      } />
+    </Routes>
   );
 }
 
