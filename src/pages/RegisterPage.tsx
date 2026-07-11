@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { Mail, Lock, User, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
-  const navigate = useNavigate();
   
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');

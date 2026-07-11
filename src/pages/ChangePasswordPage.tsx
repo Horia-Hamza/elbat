@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { Lock, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
 export const ChangePasswordPage: React.FC = () => {
-  const navigate = useNavigate();
   const token = localStorage.getItem('elbat_token');
 
   const [currentPassword, setCurrentPassword] = useState('');
