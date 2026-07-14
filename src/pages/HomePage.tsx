@@ -11,6 +11,9 @@ import { useNavigate } from 'react-router-dom';
 interface HomePageProps {
   activeCategory: string;
   setActiveCategory: (key: string) => void;
+  activeSubCategory: string;
+  setActiveSubCategory: (key: string) => void;
+  subCategories: any[];
   showOnlyFavs: boolean;
   setShowOnlyFavs: (val: boolean) => void;
   searchQuery: string;
@@ -32,6 +35,9 @@ type Bubble = {
 export const HomePage: React.FC<HomePageProps> = ({
   activeCategory,
   setActiveCategory,
+  activeSubCategory,
+  setActiveSubCategory,
+  subCategories,
   showOnlyFavs,
   setShowOnlyFavs,
   searchQuery,
@@ -48,16 +54,18 @@ export const HomePage: React.FC<HomePageProps> = ({
   
   const { products, loading: productsLoading } = useProducts({
     pageNumber: 1,
-    pageSize: 50,
-    searchTerm: searchQuery || null,
+    pageSize: 100,
     categoryId: activeCategory !== 'all' ? Number(activeCategory) : null,
+    subCategoryId: activeSubCategory !== 'all' ? Number(activeSubCategory) : null,
   });
 
-  const { products: latestProducts } = useProducts({
+  const { products: latestProductsRaw } = useProducts({
     pageNumber: 1,
-    pageSize: 4,
+    pageSize: 12,
     sortDescending: true,
   });
+
+  const latestProducts = latestProductsRaw.filter(p => p.isActive).slice(0, 3);
 
   // Drag state: which duck is being dragged and its current screen position
   const [dragState, setDragState] = useState<{
@@ -121,11 +129,35 @@ export const HomePage: React.FC<HomePageProps> = ({
     }
   };
 
-  // For favorites we do it on the client for now, assuming all products fits in one page
-  // A real implementation would send ?favorites=true to backend or fetch by IDs
+  // Helper to resolve parent category ID
+  const getProductCategoryId = (product: ApiProduct) => {
+    if (product.subCategory && product.subCategory.categoryId) {
+      return product.subCategory.categoryId;
+    }
+    const subCat = subCategories.find(sc => sc.id === product.subCategoryId);
+    return subCat ? subCat.categoryId : null;
+  };
+
+  // Client-side search, favorite, category, and subcategory filtering
   const filteredProducts = products.filter((product) => {
+    // Category check
+    const prodCatId = getProductCategoryId(product);
+    const matchesCategory = activeCategory === 'all' || (prodCatId !== null && prodCatId.toString() === activeCategory);
+
+    // Subcategory check
+    const matchesSubCategory = activeSubCategory === 'all' || product.subCategoryId.toString() === activeSubCategory;
+
+    // Favorites check
     const matchesFav = !showOnlyFavs || favorites.includes(product.id.toString());
-    return matchesFav;
+
+    // Search check
+    const queryLower = searchQuery.toLowerCase().trim();
+    const matchesSearch = !queryLower || 
+      product.name.toLowerCase().includes(queryLower) ||
+      (product.description && product.description.toLowerCase().includes(queryLower)) ||
+      (product.shortDescription && product.shortDescription.toLowerCase().includes(queryLower));
+
+    return matchesCategory && matchesSubCategory && matchesFav && matchesSearch;
   });
 
   return (
@@ -144,6 +176,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           activeCategory={activeCategory}
           onCategorySelect={(key) => {
             setActiveCategory(key);
+            setActiveSubCategory('all');
             setShowOnlyFavs(false);
           }}
         />

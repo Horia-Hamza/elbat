@@ -132,6 +132,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   // ── Navigation ──────────────────────────────────
   const handleNextStep = () => {
     setError(null);
+    if (hasOutOfStockItems) {
+      showErrorMessage('لا يمكن إتمام الطلب لأن السلة تحتوي على منتجات غير متوفرة (نفذت الكمية).');
+      return;
+    }
     if (step === 1) {
       // First Name, Last Name, and Phone are always required.
       if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
@@ -168,10 +172,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     if (step > 1) setStep(step - 1);
   };
 
-  // ── Place Order ────────────────────────────────────────────
   const handlePlaceOrder = async () => {
     console.log('🚀 [CheckoutModal] handlePlaceOrder triggered!');
     setError(null);
+    if (hasOutOfStockItems) {
+      showErrorMessage('لا يمكن إتمام الطلب لأن السلة تحتوي على منتجات غير متوفرة (نفذت الكمية).');
+      return;
+    }
     setLoading(true);
 
     const items = cartItems.map((item) => ({
@@ -291,7 +298,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setLoading(false);
     }
   };
-
   const resetForm = () => {
     setStep(1);
     setFirstName(''); setLastName(''); setEmail(''); setPassword(''); setPhone('');
@@ -303,21 +309,36 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setError(null);
   };
 
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
+  const hasOutOfStockItems = cartItems.some(item => item.product.inStock === false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (hasOutOfStockItems) {
+        setError('بعض المنتجات في السلة غير متوفرة حالياً (نفذت الكمية). يرجى العودة وإزالتها للمتابعة.');
+      } else {
+        setError(null);
+      }
+    }
+  }, [isOpen, hasOutOfStockItems]);
+
   if (!isOpen) return null;
 
   return (
-    <div className={`modal-backdrop ${isOpen ? 'open' : ''}`} onClick={onClose}>
+    <div className={`modal-backdrop ${isOpen ? 'open' : ''}`} onClick={handleClose}>
       <div
         className="modal-content"
         style={{ maxWidth: '580px', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close */}
-        <button className="modal-close-btn" onClick={onClose} title="إغلاق">
+        <button className="modal-close-btn" onClick={handleClose} title="إغلاق">
           <X size={20} />
-        </button>
-
-        {/* Step Indicator */}
+        </button>        {/* Step Indicator */}
         <div className="checkout-steps">
           {[
             { label: 'البيانات الشخصية', icon: <User size={14} /> },
@@ -582,29 +603,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <Sparkles size={20} style={{ color: 'var(--secondary-hover)' }} /> مراجعة وتأكيد طلبك
               </h3>
 
-              {/* Customer Summary */}
-              <div style={{ background: 'var(--primary-light)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem' }}>
-                <h4 style={{ color: 'var(--primary-dark)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>👤 بيانات العميل</h4>
-                <p style={{ fontSize: '0.88rem', fontWeight: 700 }}>{firstName} {lastName}</p>
-                <p style={{ fontSize: '0.83rem', color: 'var(--text-muted)' }}>{email} &nbsp;|&nbsp; {phone}</p>
-              </div>
-
-              {/* Shipping Summary */}
-              <div style={{ background: 'var(--cyan-light)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem' }}>
-                <h4 style={{ color: 'var(--primary-dark)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>📍 عنوان التوصيل</h4>
-                <p style={{ fontSize: '0.88rem', fontWeight: 700 }}>{city}{state ? `، ${state}` : ''}، {country}</p>
-                <p style={{ fontSize: '0.83rem', color: 'var(--text-muted)' }}>{addressLine1}{addressLine2 ? ` — ${addressLine2}` : ''}</p>
-              </div>
-
-              {/* Payment Method Review */}
-              <div style={{ background: '#F8FBFD', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem', border: '1px solid var(--border)' }}>
-                <h4 style={{ color: 'var(--primary-dark)', marginBottom: '0.3rem', fontSize: '0.9rem', fontWeight: 700 }}>💳 طريقة الدفع المحددة</h4>
-                <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
-                  {paymentMethod === 'cod' ? '💵 دفع عند الاستلام' : '💳 دفع إلكتروني (بطاقة / محفظة)'}
-                </p>
-              </div>
-
-              {/* Items */}
+              {/* Cu              {/* Items */}
               <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '1rem' }}>
                 <h4 style={{ color: 'var(--primary-dark)', marginBottom: '0.75rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', fontSize: '0.9rem' }}>
                   🛒 ملخص المنتجات
@@ -616,6 +615,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         {item.product.name}
                         <span style={{ color: 'var(--text-muted)' }}> x{item.quantity}</span>
                         {item.size && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> ({item.size})</span>}
+                        {item.product.inStock === false && (
+                          <span style={{ fontSize: '0.75rem', color: '#fff', backgroundColor: '#EF5350', padding: '0.1rem 0.4rem', borderRadius: '3px', marginRight: '6px', fontWeight: 'bold' }}>
+                            نفذت الكمية
+                          </span>
+                        )}
                       </span>
                       <span style={{ fontWeight: 700, color: 'var(--primary-dark)' }}>
                         {((item.product.salePrice ?? item.product.basePrice) * item.quantity).toLocaleString()} ج.م
@@ -656,13 +660,27 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               السابق <ChevronRight size={16} />
             </button>
           ) : (
-            <button className="btn-secondary" onClick={onClose} disabled={loading}>إلغاء</button>
+            <button className="btn-secondary" onClick={handleClose} disabled={loading}>إلغاء</button>
           )}
 
           {step < 3 ? (
             <button className="btn-primary" onClick={handleNextStep}
               style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <ChevronLeft size={16} /> التالي
+            </button>
+          ) : hasOutOfStockItems ? (
+            <button
+              className="btn-primary disabled"
+              disabled
+              style={{
+                backgroundColor: '#bdbdbd',
+                color: '#fff',
+                cursor: 'not-allowed',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                minWidth: '160px', justifyContent: 'center',
+              }}
+            >
+              🚫 منتجات غير متوفرة
             </button>
           ) : (
             <button

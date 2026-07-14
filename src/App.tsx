@@ -17,6 +17,7 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import BundleCheckoutPage from './pages/checkout/BundleCheckoutPage';
+import { SubCategoryPage } from './pages/SubCategoryPage';
 
 // Policy pages
 import { PrivacyPolicy } from './pages/policies/PrivacyPolicy';
@@ -28,7 +29,7 @@ import { ShippingPolicy } from './pages/policies/ShippingPolicy';
 import { WhatsAppButton } from './components/WhatsAppButton';
 
 // Tracking utilities
-import { initTracking, trackPageView, trackAddToCart, trackInitiateCheckout, trackPurchase } from './utils/tracking';
+import { initTracking, trackPageView, trackAddToCart, trackInitiateCheckout } from './utils/tracking';
 
 // Store settings
 import { getStoreSettings } from './utils/storeSettings';
@@ -48,6 +49,7 @@ import { AdminPayments } from './pages/admin/AdminPayments';
 
 import { cartApi } from './api/cart';
 import { wishlistApi } from './api/wishlist';
+import { useSubCategories } from './hooks/useSubCategories';
 
 const getUserIdFromToken = (): string => {
   const token = localStorage.getItem('elbat_token');
@@ -95,7 +97,9 @@ function App() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
+  const [activeSubCategory, setActiveSubCategory] = useState('all');
   const [showOnlyFavs, setShowOnlyFavs] = useState(false);
+  const { subCategories } = useSubCategories();
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -107,9 +111,18 @@ function App() {
     initTracking();
   }, []);
 
-  // Track page views on route changes
+  // Track page views and sync active subcategory highlight on route changes
   useEffect(() => {
     trackPageView();
+    if (location.pathname === '/') {
+      setActiveSubCategory('all');
+    } else if (location.pathname.startsWith('/subcategory/')) {
+      const parts = location.pathname.split('/');
+      const id = parts[parts.length - 1];
+      setActiveSubCategory(id);
+    } else {
+      setActiveSubCategory('none');
+    }
   }, [location]);
 
   // Track checkout initiation
@@ -508,6 +521,18 @@ function App() {
               setShowOnlyFavs(!showOnlyFavs);
               scrollToCatalog();
             }}
+            subCategories={subCategories}
+            activeSubCategory={activeSubCategory}
+            onSubCategorySelect={(key) => {
+              setActiveSubCategory(key);
+              setActiveCategory('all');
+              setShowOnlyFavs(false);
+              if (key === 'all') {
+                navigate('/');
+              } else {
+                navigate(`/subcategory/${key}`);
+              }
+            }}
           />
 
           <div style={{ flexGrow: 1 }}>
@@ -518,6 +543,9 @@ function App() {
                   <HomePage 
                     activeCategory={activeCategory}
                     setActiveCategory={setActiveCategory}
+                    activeSubCategory={activeSubCategory}
+                    setActiveSubCategory={setActiveSubCategory}
+                    subCategories={subCategories}
                     showOnlyFavs={showOnlyFavs}
                     setShowOnlyFavs={setShowOnlyFavs}
                     searchQuery={searchQuery}
@@ -546,6 +574,16 @@ function App() {
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/change-password" element={<ChangePasswordPage />} />
               <Route path="/bundle-checkout" element={<BundleCheckoutPage />} />
+              <Route 
+                path="/subcategory/:id" 
+                element={
+                  <SubCategoryPage 
+                    favorites={favorites}
+                    handleToggleFavorite={handleToggleFavorite}
+                    handleQuickAddToCart={handleQuickAddToCart}
+                  />
+                } 
+              />
               
               {/* Policies */}
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -564,7 +602,7 @@ function App() {
                   <span style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--secondary)' }}>متجر البطّ</span>
                 </div>
                 <p style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)', lineHeight: '1.8' }}>
-                  منصتك الإلكترونية الأولى لشراء المنتجات الأصلية من أشهر الماركات العالمية وشحنها مباشرة إلى مصر مع تخليص جمركي متكامل ودعم الدفع المحلي بالكامل.
+                  منصتك الإلكترونية الأولى لشراء المنتجات الأصلية من أشهر الماركات العالمية والمصريه وشحنها مباشرة إلى باب منزلك ودعم الدفع المحلي بالكامل.
                 </p>
               </div>
 

@@ -29,12 +29,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <div className="product-card">
-      {/* شارة الخصم أو المنتج الجديد */}
-      {product.isFeatured && (
+      {/* شارة الخصم أو المنتج الجديد أو نفذت الكمية */}
+      {product.inStock === false ? (
+        <span className="badge-tag out-of-stock" style={{ backgroundColor: '#EF5350', color: '#fff' }}>
+          نفذت الكمية
+        </span>
+      ) : product.isFeatured ? (
         <span className="badge-tag new">
           مميز
         </span>
-      )}
+      ) : null}
 
       {/* زر التفضيل */}
       <button
@@ -85,13 +89,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             )}
           </div>
 
-          <button
-            className="add-to-cart-btn"
-            onClick={(e) => onAddToCart(product, e)}
-            title="أضف إلى السلة"
-          >
-            <Plus size={20} />
-          </button>
+          {product.inStock === false ? (
+            <button
+              className="add-to-cart-btn disabled"
+              style={{ backgroundColor: '#bdbdbd', cursor: 'not-allowed' }}
+              disabled
+              title="نفذت الكمية"
+            >
+              <Plus size={20} />
+            </button>
+          ) : (
+            <button
+              className="add-to-cart-btn"
+              onClick={(e) => onAddToCart(product, e)}
+              title="أضف إلى السلة"
+            >
+              <Plus size={20} />
+            </button>
+          )}
         </div>
       </div>
     </div>

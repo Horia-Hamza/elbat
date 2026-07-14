@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ordersApi } from '../../api/orders';
+import { IMAGES_BASE_URL } from '../../api/client';
 import { Eye, Clock, ShieldCheck, Truck, XCircle, Search, RefreshCw, AlertCircle } from 'lucide-react';
 
 interface OrderDetail {
@@ -250,15 +251,36 @@ export const AdminOrders: React.FC = () => {
                     جاري تحميل تفاصيل المنتجات...
                   </div>
                 ) : orderDetails && orderDetails.items && orderDetails.items.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {orderDetails.items.map((item: any) => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
-                        <span style={{ maxWidth: '75%' }}>
-                          {item.productName}
-                          {item.variantName && <span style={{ color: 'var(--admin-text-muted)', fontSize: '0.8rem' }}> ({item.variantName})</span>}
-                          <span style={{ color: 'var(--admin-primary)', fontWeight: 600 }}> x{item.quantity}</span>
-                        </span>
-                        <span style={{ fontWeight: 700 }}>{item.totalPrice.toLocaleString()} ج.م</span>
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.88rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', maxWidth: '75%' }}>
+                          {item.productImageUrl ? (
+                            <img 
+                              src={item.productImageUrl.startsWith('http') ? item.productImageUrl : `${IMAGES_BASE_URL}${item.productImageUrl}`} 
+                              alt={item.productName} 
+                              style={{ width: '42px', height: '42px', objectFit: 'cover', borderRadius: '6px', backgroundColor: 'var(--admin-bg-light)' }} 
+                            />
+                          ) : (
+                            <div style={{ width: '42px', height: '42px', borderRadius: '6px', backgroundColor: 'var(--admin-bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>
+                              📦
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontWeight: 600 }}>
+                              {item.productName}
+                            </span>
+                            {item.variantName && (
+                              <span style={{ color: 'var(--admin-text-muted)', fontSize: '0.8rem' }}>
+                                ({item.variantName})
+                              </span>
+                            )}
+                            <span style={{ fontSize: '0.8rem', color: 'var(--admin-text-muted)' }}>
+                              سعر الوحدة: {item.unitPrice} ج.م | الكمية: <span style={{ color: 'var(--admin-primary)', fontWeight: 700 }}>x{item.quantity}</span>
+                            </span>
+                          </div>
+                        </div>
+                        <span style={{ fontWeight: 700, color: 'white' }}>{item.totalPrice.toLocaleString()} ج.م</span>
                       </div>
                     ))}
                   </div>

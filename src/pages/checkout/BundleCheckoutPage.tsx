@@ -16,7 +16,7 @@ import type {
 import { paymentsApi } from '../../api/payments';
 import { shippingZonesApi } from '../../api/shippingZones';
 import type { ShippingZone } from '../../api/shippingZones';
-import { BUNDLE_PRICE, PAJAMAS } from '../../data/pajamas';
+import { BUNDLE_PRICE } from '../../data/pajamas';
 import { trackPurchase } from '../../utils/tracking';
 import '../../checkout.css';
 
@@ -218,7 +218,7 @@ const BundleCheckoutPage: React.FC = () => {
         
         // Track purchase via pixels
         try {
-          const itemsToTrack = (selectedPajamas.filter(Boolean) as SelectedPajama[]).map((pj) => ({
+          const itemsToTrack = (selectedPajamas.filter(Boolean) as SelectedPajama[]).map((_pj) => ({
             product: { id: BUNDLE_PRODUCT_ID, price: BUNDLE_PRICE / 3 },
             quantity: 1
           }));

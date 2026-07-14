@@ -5,6 +5,9 @@ export const subCategoriesApi = {
   getSubCategories: () =>
     apiFetch<SubCategory[]>('/SubCategory'),
 
+  getSubCategoryById: (id: number) =>
+    apiFetch<any>(`/SubCategory/${id}`),
+
   createSubCategory: (data: FormData | Partial<SubCategory>) =>
     apiFetch<SubCategory>('/SubCategory', {
       method: 'POST',

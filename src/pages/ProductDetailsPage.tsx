@@ -179,81 +179,118 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     const scriptToInject = `
       <style>
         .selectors-section { display: none !important; }
+        ${!product.inStock ? `
+          .btn-cart, button[class*="cart"], button[id*="cart"],
+          .btn-buy-now, .btn-buy, button[class*="buy"], button[id*="buy"] {
+            background-color: #bdbdbd !important;
+            background-image: none !important;
+            color: #ffffff !important;
+            pointer-events: none !important;
+            cursor: not-allowed !important;
+          }
+          /* Add an out of stock banner style */
+          .oos-banner {
+            background-color: #EF5350;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            font-family: sans-serif;
+            position: sticky;
+            top: 0;
+            z-index: 99999;
+          }
+        ` : ''}
       </style>
       <script>
         window.addEventListener('DOMContentLoaded', () => {
-          const registeredCart = new Set();
-          const registeredWish = new Set();
-          const registeredBuy = new Set();
+          ${!product.inStock ? `
+            // Inject an out-of-stock banner at the top of the body
+            const banner = document.createElement('div');
+            banner.className = 'oos-banner';
+            banner.innerText = '⚠️ هذا المنتج غير متوفر حالياً (نفذت الكمية)';
+            document.body.insertBefore(banner, document.body.firstChild);
 
-          const cartBtns = document.querySelectorAll('.btn-cart, button[class*="cart"], button[id*="cart"]');
-          cartBtns.forEach(btn => {
-            if (!registeredCart.has(btn)) {
-              registeredCart.add(btn);
-              btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                window.parent.postMessage({ type: 'ADD_TO_CART', quantity: 1 }, '*');
-              });
-            }
-          });
+            // Change button texts to out-of-stock
+            document.querySelectorAll('.btn-cart, button[class*="cart"], button[id*="cart"], .btn-buy-now, .btn-buy, button[class*="buy"], button[id*="buy"]').forEach(btn => {
+              btn.innerText = 'نفذت الكمية';
+              btn.disabled = true;
+            });
+          ` : `
+            const registeredCart = new Set();
+            const registeredWish = new Set();
+            const registeredBuy = new Set();
 
-          document.querySelectorAll('button').forEach(btn => {
-            if (!registeredCart.has(btn)) {
-              if (btn.textContent.includes('سلة') || btn.textContent.includes('السلة') || btn.textContent.includes('cart') || btn.textContent.includes('Cart')) {
+            const cartBtns = document.querySelectorAll('.btn-cart, button[class*="cart"], button[id*="cart"]');
+            cartBtns.forEach(btn => {
+              if (!registeredCart.has(btn)) {
                 registeredCart.add(btn);
                 btn.addEventListener('click', (e) => {
                   e.preventDefault();
                   window.parent.postMessage({ type: 'ADD_TO_CART', quantity: 1 }, '*');
                 });
               }
-            }
-          });
+            });
 
-          const buyBtns = document.querySelectorAll('.btn-buy-now, .btn-buy, button[class*="buy"], button[id*="buy"]');
-          buyBtns.forEach(btn => {
-            if (!registeredBuy.has(btn)) {
-              registeredBuy.add(btn);
-              btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                window.parent.postMessage({ type: 'BUY_NOW', quantity: 1 }, '*');
-              });
-            }
-          });
+            document.querySelectorAll('button').forEach(btn => {
+              if (!registeredCart.has(btn)) {
+                if (btn.textContent.includes('سلة') || btn.textContent.includes('السلة') || btn.textContent.includes('cart') || btn.textContent.includes('Cart')) {
+                  registeredCart.add(btn);
+                  btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.parent.postMessage({ type: 'ADD_TO_CART', quantity: 1 }, '*');
+                  });
+                }
+              }
+            });
 
-          document.querySelectorAll('button').forEach(btn => {
-            if (!registeredBuy.has(btn)) {
-              if (btn.textContent.includes('شراء الآن') || btn.textContent.includes('الشراء الآن') || btn.textContent.includes('شراء') || btn.textContent.includes('buy') || btn.textContent.includes('Buy')) {
+            const buyBtns = document.querySelectorAll('.btn-buy-now, .btn-buy, button[class*="buy"], button[id*="buy"]');
+            buyBtns.forEach(btn => {
+              if (!registeredBuy.has(btn)) {
                 registeredBuy.add(btn);
                 btn.addEventListener('click', (e) => {
                   e.preventDefault();
                   window.parent.postMessage({ type: 'BUY_NOW', quantity: 1 }, '*');
                 });
               }
-            }
-          });
+            });
 
-          const wishBtns = document.querySelectorAll('.btn-wish, button[class*="wish"], button[id*="wish"]');
-          wishBtns.forEach(btn => {
-            if (!registeredWish.has(btn)) {
-              registeredWish.add(btn);
-              btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                window.parent.postMessage({ type: 'ADD_TO_WISHLIST' }, '*');
-              });
-            }
-          });
+            document.querySelectorAll('button').forEach(btn => {
+              if (!registeredBuy.has(btn)) {
+                if (btn.textContent.includes('شراء الآن') || btn.textContent.includes('الشراء الآن') || btn.textContent.includes('شراء') || btn.textContent.includes('buy') || btn.textContent.includes('Buy')) {
+                  registeredBuy.add(btn);
+                  btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.parent.postMessage({ type: 'BUY_NOW', quantity: 1 }, '*');
+                  });
+                }
+              }
+            });
 
-          document.querySelectorAll('button').forEach(btn => {
-            if (!registeredWish.has(btn)) {
-              if (btn.textContent.includes('المفضلة') || btn.textContent.includes('مفضلة') || btn.textContent.includes('wish') || btn.textContent.includes('Wish')) {
+            const wishBtns = document.querySelectorAll('.btn-wish, button[class*="wish"], button[id*="wish"]');
+            wishBtns.forEach(btn => {
+              if (!registeredWish.has(btn)) {
                 registeredWish.add(btn);
                 btn.addEventListener('click', (e) => {
                   e.preventDefault();
                   window.parent.postMessage({ type: 'ADD_TO_WISHLIST' }, '*');
                 });
               }
-            }
-          });
+            });
+
+            document.querySelectorAll('button').forEach(btn => {
+              if (!registeredWish.has(btn)) {
+                if (btn.textContent.includes('المفضلة') || btn.textContent.includes('مفضلة') || btn.textContent.includes('wish') || btn.textContent.includes('Wish')) {
+                  registeredWish.add(btn);
+                  btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.parent.postMessage({ type: 'ADD_TO_WISHLIST' }, '*');
+                  });
+                }
+              }
+            });
+          `}
 
           // Dynamic height adjustment to prevent double scrollbars
           const reportHeight = () => {
@@ -417,6 +454,11 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
             {/* لوحة التفاصيل */}
             <div className="pdp-info">
               <div className="pdp-badges">
+                {product.inStock === false && (
+                  <span className="pdp-badge-origin" style={{ backgroundColor: '#EF5350', color: '#fff', fontWeight: 'bold' }}>
+                    🚫 نفذت الكمية (غير متوفر)
+                  </span>
+                )}
                 <span className="pdp-badge-category">
                   {product.subCategory?.name || 'تصنيف'}
                 </span>
@@ -500,10 +542,16 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                   </button>
                 </div>
 
-                <button className="btn-primary pdp-add-btn" onClick={handleAdd} style={{ flex: 1 }}>
-                  <ShoppingCart size={22} />
-                  إضافة إلى السلة
-                </button>
+                {product.inStock === false ? (
+                  <button className="btn-primary pdp-add-btn disabled" disabled style={{ flex: 1, backgroundColor: '#bdbdbd', cursor: 'not-allowed' }}>
+                    🚫 غير متوفر حالياً
+                  </button>
+                ) : (
+                  <button className="btn-primary pdp-add-btn" onClick={handleAdd} style={{ flex: 1 }}>
+                    <ShoppingCart size={22} />
+                    إضافة إلى السلة
+                  </button>
+                )}
 
                 <button
                   className={`favorite-toggle ${favorites.includes(String(product.id)) ? 'is-fav' : ''}`}
@@ -523,12 +571,22 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
               </div>
 
               {/* زر الشراء الآن */}
-              <button
-                className="pdp-buy-now-btn"
-                onClick={() => onBuyNow(product, quantity, selectedColor, selectedSize)}
-              >
-                ⚡ شراء الآن
-              </button>
+              {product.inStock === false ? (
+                <button
+                  className="pdp-buy-now-btn disabled"
+                  disabled
+                  style={{ backgroundColor: '#bdbdbd', cursor: 'not-allowed', marginTop: '1rem' }}
+                >
+                  🚫 نفذت الكمية
+                </button>
+              ) : (
+                <button
+                  className="pdp-buy-now-btn"
+                  onClick={() => onBuyNow(product, quantity, selectedColor, selectedSize)}
+                >
+                  ⚡ شراء الآن
+                </button>
+              )}
 
             </div>
           </div>

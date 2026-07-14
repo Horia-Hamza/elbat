@@ -71,24 +71,43 @@ export const AdminSubCategories: React.FC = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      const fd = new FormData();
-      fd.append('Name', formData.name);
-      fd.append('Slug', formData.slug);
-      fd.append('Description', formData.description);
-      fd.append('ImageUrl', formData.imageUrl);
-      fd.append('IsActive', formData.isActive.toString());
-      fd.append('DisplayOrder', formData.displayOrder.toString());
-      fd.append('CategoryId', formData.categoryId.toString());
-      
       if (imageFile) {
+        // Send as FormData to support file upload
+        const fd = new FormData();
+        fd.append('Name', formData.name);
+        fd.append('Slug', formData.slug);
+        fd.append('Description', formData.description);
+        fd.append('ImageUrl', formData.imageUrl);
+        fd.append('IsActive', formData.isActive.toString());
+        fd.append('DisplayOrder', formData.displayOrder.toString());
+        fd.append('CategoryId', formData.categoryId.toString());
         fd.append('Image', imageFile);
-      }
 
-      if (editingSubCategory) {
-        await subCategoriesApi.updateSubCategory(editingSubCategory.id, fd);
+        if (editingSubCategory) {
+          await subCategoriesApi.updateSubCategory(editingSubCategory.id, fd);
+        } else {
+          await subCategoriesApi.createSubCategory(fd);
+        }
       } else {
-        await subCategoriesApi.createSubCategory(fd);
+        // Send as JSON with null for empty properties
+        const jsonPayload = {
+          name: formData.name,
+          slug: formData.slug,
+          description: formData.description || "",
+          image: null,
+          imageUrl: formData.imageUrl || null,
+          isActive: formData.isActive,
+          displayOrder: formData.displayOrder || 1,
+          categoryId: formData.categoryId
+        };
+
+        if (editingSubCategory) {
+          await subCategoriesApi.updateSubCategory(editingSubCategory.id, jsonPayload);
+        } else {
+          await subCategoriesApi.createSubCategory(jsonPayload);
+        }
       }
+      
       setIsModalOpen(false);
       refetch();
     } catch (err) {

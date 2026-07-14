@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { paymentsApi } from '../../api/payments';
-import { RefreshCw, CreditCard, AlertCircle, ChevronRight, ChevronLeft, Eye } from 'lucide-react';
+import { ordersApi } from '../../api/orders';
+import { IMAGES_BASE_URL } from '../../api/client';
+import { RefreshCw, AlertCircle, ChevronRight, ChevronLeft, Eye } from 'lucide-react';
 
 interface PaymentItem {
   id: number;
@@ -23,7 +25,7 @@ export const AdminPayments: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   
   // Method Filter
-  const [methodFilter, setMethodFilter] = useState<'all' | 'CashOnDelivery' | 'online'>('all');
+  const [methodFilter, setMethodFilter] = useState<'all' | 'CashOnDelivery' | 'online' | 'success_online'>('all');
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -39,6 +41,7 @@ export const AdminPayments: React.FC = () => {
   const [approveLoading, setApproveLoading] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
   const [paymentDetails, setPaymentDetails] = useState<PaymentItem | null>(null);
+  const [orderDetails, setOrderDetails] = useState<any | null>(null);
 
   const fetchPayments = async () => {
     setLoading(true);
@@ -64,22 +67,32 @@ export const AdminPayments: React.FC = () => {
     fetchPayments();
   }, [page, pageSize]);
 
-  // Fetch latest payment details for an order
+  // Fetch latest payment and order details for an order
   const handleViewOrderDetails = async (orderId: number) => {
     setSelectedOrderId(orderId);
     setPaymentDetails(null);
+    setOrderDetails(null);
     setDetailsError(null);
     setDetailsLoading(true);
     try {
-      const response = await paymentsApi.getLatestPaymentByOrderId(orderId);
-      if (response) {
-        setPaymentDetails(response);
-      } else {
-        setDetailsError('لم يتم العثور على بيانات الدفع لهذا الطلب.');
+      const [paymentData, orderData] = await Promise.all([
+        paymentsApi.getLatestPaymentByOrderId(orderId).catch(() => null),
+        ordersApi.getOrderDetails(orderId).catch(() => null)
+      ]);
+      
+      if (paymentData) {
+        setPaymentDetails(paymentData);
+      }
+      if (orderData) {
+        setOrderDetails(orderData);
+      }
+      
+      if (!paymentData && !orderData) {
+        setDetailsError('لم يتم العثور على تفاصيل الطلب أو المعاملة المالية.');
       }
     } catch (err: any) {
-      console.error('Failed to fetch latest payment details:', err);
-      setDetailsError(err.message || 'فشل جلب تفاصيل عملية الدفع.');
+      console.error('Failed to fetch latest details:', err);
+      setDetailsError(err.message || 'فشل جلب تفاصيل المعاملة والطلب.');
     } finally {
       setDetailsLoading(false);
     }
@@ -141,11 +154,47 @@ export const AdminPayments: React.FC = () => {
     }
   };
 
+  // Order status badges mapping
+  const getOrderStatusBadge = (status: number) => {
+    switch (status) {
+      case 1:
+        return <span style={{ color: '#0288d1', background: '#e1f5fe', padding: '3px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>قيد الانتظار</span>;
+      case 2:
+        return <span style={{ color: '#1e88e5', background: '#e3f2fd', padding: '3px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>تم الشحن</span>;
+      case 3:
+        return <span style={{ color: '#388e3c', background: '#e8f5e9', padding: '3px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>تم التوصيل</span>;
+      case 4:
+        return <span style={{ color: '#d32f2f', background: '#ffebee', padding: '3px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>ملغي</span>;
+      default:
+        return <span style={{ color: '#757575', background: '#eeeeee', padding: '3px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>غير معروف</span>;
+    }
+  };
+
+  // Order payment status badges mapping
+  const getOrderPaymentStatusBadge = (status: number) => {
+    switch (status) {
+      case 1:
+        return <span style={{ color: '#f57c00', background: '#fff3e0', padding: '3px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>قيد الانتظار</span>;
+      case 2:
+        return <span style={{ color: '#388e3c', background: '#e8f5e9', padding: '3px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>ناجح</span>;
+      case 3:
+        return <span style={{ color: '#d32f2f', background: '#ffebee', padding: '3px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>فاشل</span>;
+      case 4:
+        return <span style={{ color: '#757575', background: '#eeeeee', padding: '3px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>ملغي</span>;
+      case 5:
+        return <span style={{ color: '#0288d1', background: '#e1f5fe', padding: '3px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>مسترجع</span>;
+      default:
+        return <span style={{ color: '#757575', background: '#eeeeee', padding: '3px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>غير معروف</span>;
+    }
+  };
+
   // Filter payments by selected method client-side
   const filteredPayments = payments.filter((p) => {
     if (methodFilter === 'all') return true;
     if (methodFilter === 'CashOnDelivery') return p.method === 'CashOnDelivery';
-    return p.method !== 'CashOnDelivery'; // online
+    if (methodFilter === 'online') return p.method !== 'CashOnDelivery';
+    if (methodFilter === 'success_online') return p.method !== 'CashOnDelivery' && p.status === 'Success';
+    return true;
   });
 
   return (
@@ -176,7 +225,8 @@ export const AdminPayments: React.FC = () => {
           >
             <option value="all">كل طرق الدفع</option>
             <option value="CashOnDelivery">💵 دفع عند الاستلام (CashOnDelivery)</option>
-            <option value="online">💳 الدفع الإلكتروني (Online Payments)</option>
+            <option value="online">💳 الدفع الإلكتروني (كل العمليات)</option>
+            <option value="success_online">🟢 الدفع الإلكتروني الناجح فقط (Success Online)</option>
           </select>
         </div>
       </div>
@@ -242,7 +292,7 @@ export const AdminPayments: React.FC = () => {
                   <td>
                     <button 
                       className="admin-icon-btn" 
-                      title="تفاصيل الدفع"
+                      title="تفاصيل الدفع والطلب"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleViewOrderDetails(p.orderId);
@@ -313,12 +363,12 @@ export const AdminPayments: React.FC = () => {
         }}>
           <div style={{
             background: 'var(--admin-bg-panel)', borderRadius: '14px',
-            width: '100%', maxWidth: '550px', maxHeight: '90vh', overflowY: 'auto',
+            width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto',
             boxShadow: '0 20px 60px rgba(0,0,0,0.6)', padding: '2rem',
             border: '1px solid var(--admin-border)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ margin: 0, color: 'white' }}>تفاصيل حركة الدفع للطلب #{selectedOrderId}</h3>
+              <h3 style={{ margin: 0, color: 'white' }}>بيانات الطلب والمعاملة المالية لـ #{selectedOrderId}</h3>
               <button 
                 style={{ background: 'none', border: 'none', color: '#ccc', fontSize: '1.5rem', cursor: 'pointer' }}
                 onClick={() => setSelectedOrderId(null)}
@@ -329,69 +379,143 @@ export const AdminPayments: React.FC = () => {
 
             {detailsLoading ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--admin-text-muted)' }}>
-                جاري تحميل تفاصيل المعاملة من السيرفر...
+                جاري جلب تفاصيل الطلب والمعاملة من السيرفر...
               </div>
             ) : detailsError ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(244,67,54,0.1)', border: '1px solid var(--admin-danger)', borderRadius: '8px', padding: '1rem', color: 'var(--admin-danger)' }}>
                 <AlertCircle size={16} /> {detailsError}
               </div>
-            ) : paymentDetails ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', color: 'white' }}>
-                <div style={{ background: 'var(--admin-bg-dark)', padding: '1.25rem', borderRadius: '8px', border: '1px solid var(--admin-border)' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.9rem' }}>
-                    <div>
-                      <span style={{ color: 'var(--admin-text-muted)', display: 'block', marginBottom: '4px' }}>رقم المعاملة (السيرفر):</span>
-                      <strong style={{ fontSize: '1.05rem', color: 'var(--admin-primary)' }}>#{paymentDetails.id}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--admin-text-muted)', display: 'block', marginBottom: '4px' }}>رقم الطلب (سيرفر):</span>
-                      <strong style={{ fontSize: '1.05rem' }}>#{paymentDetails.orderId}</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ background: 'var(--admin-bg-dark)', padding: '1.25rem', borderRadius: '8px', border: '1px solid var(--admin-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.88rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-                    <span style={{ color: 'var(--admin-text-muted)' }}>رقم طلب Paymob:</span>
-                    <span style={{ direction: 'ltr', fontWeight: 600 }}>{paymentDetails.paymobOrderId || '—'}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-                    <span style={{ color: 'var(--admin-text-muted)' }}>رقم عملية Paymob:</span>
-                    <span style={{ direction: 'ltr', fontWeight: 600 }}>{paymentDetails.paymobTransactionId || '—'}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-                    <span style={{ color: 'var(--admin-text-muted)' }}>طريقة الدفع:</span>
-                    <span style={{ fontWeight: 600 }}>{getMethodLabel(paymentDetails.method)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-                    <span style={{ color: 'var(--admin-text-muted)' }}>القيمة الإجمالية:</span>
-                    <strong style={{ color: 'var(--admin-primary)', fontSize: '1rem' }}>{paymentDetails.amount.toLocaleString()} {paymentDetails.currency}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-                    <span style={{ color: 'var(--admin-text-muted)' }}>حالة المعاملة:</span>
-                    <span>{getStatusBadge(paymentDetails.status)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-                    <span style={{ color: 'var(--admin-text-muted)' }}>تاريخ المعاملة:</span>
-                    <span>{new Date(paymentDetails.createdAt).toLocaleString('ar-EG')}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--admin-text-muted)' }}>حالة الاسترجاع:</span>
-                    <span>
-                      {paymentDetails.isRefunded ? (
-                        <span style={{ color: 'var(--admin-danger)', fontWeight: 600 }}>
-                          🔄 تم الاسترجاع ({paymentDetails.refundedAmount} {paymentDetails.currency})
-                        </span>
-                      ) : (
-                        '—'
-                      )}
-                    </span>
-                  </div>
-                </div>
-              </div>
             ) : (
-              <div style={{ textAlign: 'center', color: 'var(--admin-text-muted)' }}>
-                لا توجد تفاصيل لعرضها.
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', color: 'white' }}>
+                
+                {/* 1. Order Details from /api/Order/{id}/details */}
+                {orderDetails && (
+                  <div style={{ background: 'var(--admin-bg-dark)', padding: '1.25rem', borderRadius: '8px', border: '1px solid var(--admin-border)' }}>
+                    <h4 style={{ margin: '0 0 1rem', color: 'var(--admin-primary)', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>📦 تفاصيل الطلب</span>
+                      <span style={{ fontSize: '0.82rem', direction: 'ltr', color: '#ccc' }}>{orderDetails.orderNumber}</span>
+                    </h4>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', fontSize: '0.88rem', marginBottom: '1rem' }}>
+                      <div>
+                        <span style={{ color: 'var(--admin-text-muted)', display: 'block', marginBottom: '2px' }}>اسم العميل:</span>
+                        <strong>{orderDetails.customerName || 'غير معروف'}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--admin-text-muted)', display: 'block', marginBottom: '2px' }}>حالة الطلب:</span>
+                        <span>{getOrderStatusBadge(orderDetails.status)}</span>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--admin-text-muted)', display: 'block', marginBottom: '2px' }}>حالة الدفع للطلب:</span>
+                        <span>{getOrderPaymentStatusBadge(orderDetails.paymentStatus)}</span>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--admin-text-muted)', display: 'block', marginBottom: '2px' }}>تاريخ الطلب:</span>
+                        <span>{new Date(orderDetails.createdAt).toLocaleString('ar-EG')}</span>
+                      </div>
+                    </div>
+
+                    {/* Order Line Items */}
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.75rem', marginTop: '0.5rem' }}>
+                      <span style={{ color: 'var(--admin-text-muted)', display: 'block', marginBottom: '8px', fontSize: '0.82rem', fontWeight: 600 }}>المنتجات المطلوبة:</span>
+                      {orderDetails.items && orderDetails.items.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {orderDetails.items.map((item: any) => (
+                            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', borderBottom: '1px dashed rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', maxWidth: '75%' }}>
+                                {item.productImageUrl ? (
+                                  <img 
+                                    src={item.productImageUrl.startsWith('http') ? item.productImageUrl : `${IMAGES_BASE_URL}${item.productImageUrl}`} 
+                                    alt={item.productName} 
+                                    style={{ width: '38px', height: '38px', objectFit: 'cover', borderRadius: '6px', backgroundColor: 'var(--admin-bg-panel)' }} 
+                                  />
+                                ) : (
+                                  <div style={{ width: '38px', height: '38px', borderRadius: '6px', backgroundColor: 'var(--admin-bg-panel)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: 'var(--admin-text-muted)' }}>
+                                    📦
+                                  </div>
+                                )}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                                  <span style={{ fontWeight: 600 }}>{item.productName}</span>
+                                  {item.variantName && <span style={{ color: 'var(--admin-text-muted)', fontSize: '0.72rem' }}>({item.variantName})</span>}
+                                  <span style={{ fontSize: '0.72rem', color: 'var(--admin-text-muted)' }}>
+                                    سعر القطعة: {item.unitPrice} ج.م | الكمية: <span style={{ color: 'var(--admin-primary)', fontWeight: 700 }}>x{item.quantity}</span>
+                                  </span>
+                                </div>
+                              </div>
+                              <span style={{ fontWeight: 700 }}>{item.totalPrice.toLocaleString()} ج.م</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--admin-text-muted)', fontSize: '0.82rem' }}>لا توجد منتجات مسجلة في هذا الطلب.</span>
+                      )}
+                    </div>
+
+                    {/* Order Financials */}
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.75rem', marginTop: '0.75rem', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--admin-text-muted)' }}>المجموع الفرعي:</span>
+                        <span>{orderDetails.subTotal.toLocaleString()} ج.م</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--admin-text-muted)' }}>تكلفة الشحن:</span>
+                        <span>{orderDetails.shippingCost > 0 ? `${orderDetails.shippingCost} ج.م` : 'مجاني'}</span>
+                      </div>
+                      {orderDetails.discountAmount > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--admin-danger)' }}>
+                          <span>الخصم:</span>
+                          <span>-{orderDetails.discountAmount} ج.م</span>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '0.92rem', borderTop: '1px dashed var(--admin-border)', paddingTop: '0.5rem', marginTop: '4px' }}>
+                        <span>الإجمالي الكلي للطلب:</span>
+                        <span style={{ color: 'var(--admin-primary)' }}>{orderDetails.totalAmount.toLocaleString()} ج.م</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Payment Transaction Details */}
+                {paymentDetails && (
+                  <div style={{ background: 'var(--admin-bg-dark)', padding: '1.25rem', borderRadius: '8px', border: '1px solid var(--admin-border)' }}>
+                    <h4 style={{ margin: '0 0 1rem', color: 'var(--admin-primary)', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.5rem' }}>
+                      💳 تفاصيل المعاملة المالية وحركة الدفع
+                    </h4>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                        <span style={{ color: 'var(--admin-text-muted)' }}>رقم العملية (السيرفر):</span>
+                        <strong style={{ color: 'var(--admin-primary)' }}>#{paymentDetails.id}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                        <span style={{ color: 'var(--admin-text-muted)' }}>طريقة الدفع المستخدمة:</span>
+                        <strong>{getMethodLabel(paymentDetails.method)}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                        <span style={{ color: 'var(--admin-text-muted)' }}>حالة معاملة الدفع:</span>
+                        <span>{getStatusBadge(paymentDetails.status)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                        <span style={{ color: 'var(--admin-text-muted)' }}>مبلغ المعاملة:</span>
+                        <strong style={{ color: 'var(--admin-primary)' }}>{paymentDetails.amount.toLocaleString()} {paymentDetails.currency}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                        <span style={{ color: 'var(--admin-text-muted)' }}>رقم طلب Paymob:</span>
+                        <span style={{ direction: 'ltr', fontWeight: 600 }}>{paymentDetails.paymobOrderId || '—'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                        <span style={{ color: 'var(--admin-text-muted)' }}>رقم عملية Paymob:</span>
+                        <span style={{ direction: 'ltr', fontWeight: 600 }}>{paymentDetails.paymobTransactionId || '—'}</span>
+                      </div>
+                      {paymentDetails.isRefunded && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--admin-danger)' }}>
+                          <span>حالة الاسترجاع:</span>
+                          <span>🔄 تم الاسترجاع ({paymentDetails.refundedAmount} {paymentDetails.currency})</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
