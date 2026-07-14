@@ -63,7 +63,7 @@ export const initTracking = () => {
         return e;
       };
       ttq.load = function (e: any, n: any) {
-        var r = "https://analytics.tiktok.com/i18n/pixel/events.js", o = n && n.mixpool;
+        var r = "https://analytics.tiktok.com/i18n/pixel/events.js";
         ttq._i = ttq._i || {};
         ttq._i[e] = [];
         ttq._i[e]._u = r;

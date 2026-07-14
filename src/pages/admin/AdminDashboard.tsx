@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, Users, ShoppingCart, TrendingUp, Settings, Save, HelpCircle, Globe, Share2 } from 'lucide-react';
+import { Package, Users, ShoppingCart, TrendingUp, Save, HelpCircle, Globe, Share2 } from 'lucide-react';
 import { getStoreSettings, saveStoreSettings } from '../../utils/storeSettings';
 
 export const AdminDashboard: React.FC = () => {

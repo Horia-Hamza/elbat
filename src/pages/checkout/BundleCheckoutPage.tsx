@@ -176,7 +176,7 @@ const BundleCheckoutPage: React.FC = () => {
       // Build items array — one line item per selected pajama
       // Each selected pajama maps to the same bundle product but treated as 1 qty.
       // variantId is null since the bundle offer doesn't use backend variants.
-      const items = (selectedPajamas.filter(Boolean) as SelectedPajama[]).map((pj) => {
+      const items = (selectedPajamas.filter(Boolean) as SelectedPajama[]).map(() => {
         // Try to find a matching productId from PAJAMAS data if they ever have real IDs;
         // for now fall back to BUNDLE_PRODUCT_ID.
         return {
