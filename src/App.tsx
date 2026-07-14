@@ -4,7 +4,6 @@ import { Header } from './components/Header';
 import { CartDrawer } from './components/CartDrawer';
 import type { CartItem } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
-import { OrderTracker } from './components/OrderTracker';
 import { Toast } from './components/Toast';
 import type { ToastMessage } from './components/Toast';
 import type { ApiProduct } from './types/api';
@@ -45,6 +44,7 @@ import { AdminSubCategories } from './pages/admin/AdminSubCategories';
 import { AdminPageDesigns } from './pages/admin/AdminPageDesigns';
 import { AdminShippingZones } from './pages/admin/AdminShippingZones';
 import { AdminShippingAddresses } from './pages/admin/AdminShippingAddresses';
+import { AdminPayments } from './pages/admin/AdminPayments';
 
 import { cartApi } from './api/cart';
 import { wishlistApi } from './api/wishlist';
@@ -86,6 +86,7 @@ function App() {
     const saved = localStorage.getItem('elbat_cart');
     return saved ? JSON.parse(saved) : [];
   });
+  const [buyNowItem, setBuyNowItem] = useState<CartItem | null>(null);
   
   const [favorites, setFavorites] = useState<string[]>(() => {
     const saved = localStorage.getItem('elbat_favs');
@@ -98,7 +99,6 @@ function App() {
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [activeOrder, setActiveOrder] = useState<{ id: string; customerName: string } | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const location = useLocation();
 
@@ -426,26 +426,16 @@ function App() {
     }
   };
 
-  // إتمام الدفع بنجاح
-  const handleCheckoutSuccess = (orderId: string, customerName: string) => {
-    trackPurchase(
-      orderId,
-      cartItems.map(item => ({
-        product: { id: item.product.id, price: item.product.salePrice !== null && item.product.salePrice !== undefined ? item.product.salePrice : item.product.basePrice },
-        quantity: item.quantity
-      }))
-    );
 
-    setActiveOrder({ id: orderId, customerName });
-    setCartItems([]); // تفريغ السلة
-    setIsCheckoutOpen(false);
-    // Clear localStorage cart too
-    localStorage.setItem('cart', JSON.stringify([]));
-  };
-
-  // شراء الآن — يضيف المنتج للسلة ثم يفتح الدفع مباشرة
+  // شراء الآن — يفتح الدفع مباشرة دون إضافة المنتج إلى السلة
   const handleBuyNow = (product: import('./types/api').ApiProduct, quantity: number, color?: string, size?: string) => {
-    handleAddToCart(product, quantity, color, size);
+    const itemId = `${product.id}_${color || 'none'}_${size || 'none'}`;
+    setBuyNowItem({ id: itemId, product, quantity, color, size });
+
+    // Track initiate checkout for pixel tracking
+    const priceVal = product.salePrice !== null && product.salePrice !== undefined ? product.salePrice : product.basePrice;
+    trackInitiateCheckout([{ product: { id: product.id, price: priceVal }, quantity }]);
+
     setIsCheckoutOpen(true);
   };
 
@@ -488,6 +478,7 @@ function App() {
         <Route path="subcategories" element={<AdminSubCategories />} />
         <Route path="brands" element={<AdminBrands />} />
         <Route path="orders" element={<AdminOrders />} />
+        <Route path="payments" element={<AdminPayments />} />
         <Route path="shipping" element={<AdminShippingZones />} />
         <Route path="addresses" element={<AdminShippingAddresses />} />
       </Route>
@@ -495,7 +486,7 @@ function App() {
       {/* ====================================================
           PAYMENT CALLBACK — standalone, no header/footer
           ==================================================== */}
-      <Route path="/payment/success" element={<PaymentSuccessPage />} />
+      <Route path="/payment/result" element={<PaymentSuccessPage />} />
       <Route path="/payment/callback" element={<PaymentSuccessPage />} />
 
       {/* ====================================================
@@ -735,16 +726,11 @@ function App() {
 
           <CheckoutModal
             isOpen={isCheckoutOpen}
-            onClose={() => setIsCheckoutOpen(false)}
-            cartItems={cartItems}
-            onCheckoutSuccess={handleCheckoutSuccess}
-          />
-
-          <OrderTracker
-            isOpen={activeOrder !== null}
-            orderId={activeOrder?.id || ''}
-            customerName={activeOrder?.customerName || ''}
-            onClose={() => setActiveOrder(null)}
+            onClose={() => {
+              setIsCheckoutOpen(false);
+              setBuyNowItem(null);
+            }}
+            cartItems={buyNowItem ? [buyNowItem] : cartItems}
           />
 
           <Toast toasts={toasts} onClose={removeToast} />

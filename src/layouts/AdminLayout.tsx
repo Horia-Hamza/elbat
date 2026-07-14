@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, Folders, FolderTree, ShoppingCart, Bell, Search, Settings, LogOut, Tag, Palette, Truck, MapPin } from 'lucide-react';
+import { LayoutDashboard, Package, Folders, FolderTree, ShoppingCart, Bell, Search, Settings, LogOut, Tag, Palette, Truck, MapPin, CreditCard } from 'lucide-react';
 import '../admin.css';
 
 export const AdminLayout: React.FC = () => {
@@ -14,6 +14,7 @@ export const AdminLayout: React.FC = () => {
     { path: '/admin/subcategories', icon: FolderTree, label: 'الأقسام الفرعية' },
     { path: '/admin/brands', icon: Tag, label: 'الماركات التجارية' },
     { path: '/admin/orders', icon: ShoppingCart, label: 'الطلبات والمبيعات' },
+    { path: '/admin/payments', icon: CreditCard, label: 'العمليات المالية' },
     { path: '/admin/shipping', icon: Truck, label: 'مناطق الشحن' },
     { path: '/admin/addresses', icon: MapPin, label: 'عناوين الشحن' },
   ];

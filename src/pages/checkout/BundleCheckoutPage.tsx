@@ -17,6 +17,7 @@ import { paymentsApi } from '../../api/payments';
 import { shippingZonesApi } from '../../api/shippingZones';
 import type { ShippingZone } from '../../api/shippingZones';
 import { BUNDLE_PRICE, PAJAMAS } from '../../data/pajamas';
+import { trackPurchase } from '../../utils/tracking';
 import '../../checkout.css';
 
 // Bundle products map: pajamaId → backend productId
@@ -157,6 +158,17 @@ const BundleCheckoutPage: React.FC = () => {
       return;
     }
 
+    if (isAccountOpen) {
+      if (!accountDetails.email.trim() || !accountDetails.password.trim()) {
+        setSubmitError('الرجاء إدخال البريد الإلكتروني وكلمة المرور لإنشاء حسابك.');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(accountDetails.email)) {
+        setSubmitError('الرجاء إدخال بريد إلكتروني صحيح.');
+        return;
+      }
+    }
+
     setSubmitError(null);
     setIsSubmitting(true);
 
@@ -174,12 +186,11 @@ const BundleCheckoutPage: React.FC = () => {
         };
       });
 
-      const checkoutPayload = {
+      const checkoutPayload: any = {
         firstName:    customerDetails.firstName.trim(),
         lastName:     customerDetails.lastName.trim(),
-        email:        accountDetails.email.trim(),
         phoneNumber:  customerDetails.phone.trim(),
-        password:     accountDetails.password.trim(),
+        paymentMethod: paymentMethod === 'cod' ? 4 : 1, // COD = 4, CreditCard = 1
         country:      'مصر',
         state:        selectedZone?.state             || null,
         city:         selectedZone?.name              || null,
@@ -190,24 +201,39 @@ const BundleCheckoutPage: React.FC = () => {
         items,
       };
 
+      // Only send email/password if provided by user
+      if (accountDetails.email.trim()) {
+        checkoutPayload.email = accountDetails.email.trim();
+      }
+      if (isAccountOpen && accountDetails.password.trim()) {
+        checkoutPayload.password = accountDetails.password.trim();
+      }
+
       const orderData = await paymentsApi.checkoutAsGuest(checkoutPayload);
 
       // ── Handle payment method routing (mirrors CheckoutModal) ────
-      if (paymentMethod === 'cod') {
+      if (!orderData?.requiresPayment) {
         const orderIdNumber = Number(orderData?.orderId || orderData?.id || 0);
-        if (orderIdNumber > 0) {
-          try {
-            await paymentsApi.processPayment(orderIdNumber, 'COD');
-          } catch (e) {
-            console.error('Failed to set COD payment on backend:', e);
-          }
+        const orderNum = orderData?.orderNumber || `COD-${orderIdNumber || Date.now()}`;
+        
+        // Track purchase via pixels
+        try {
+          const itemsToTrack = (selectedPajamas.filter(Boolean) as SelectedPajama[]).map((pj) => ({
+            product: { id: BUNDLE_PRODUCT_ID, price: BUNDLE_PRICE / 3 },
+            quantity: 1
+          }));
+          trackPurchase(orderNum, itemsToTrack);
+        } catch (e) {
+          console.error('Failed to track bundle purchase:', e);
         }
-        const orderNum =
-          orderData?.orderNumber || `COD-${orderIdNumber || Date.now()}`;
-        window.location.href =
-          `/payment/success?success=true&merchant_order_id=${orderNum}` +
-          `&amount_cents=${orderTotal * 100}&currency=EGP` +
-          `&source_data.type=cod&data.message=Approved`;
+
+        // Empty the cart
+        localStorage.setItem('cart', JSON.stringify([]));
+        localStorage.setItem('elbat_cart', JSON.stringify([]));
+
+        setOrderReference(orderNum);
+        setOrderSuccess(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
 

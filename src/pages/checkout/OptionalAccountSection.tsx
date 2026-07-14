@@ -47,8 +47,7 @@ const OptionalAccountSection: React.FC<OptionalAccountSectionProps> = ({
           {/* Email */}
           <div className="form-group">
             <label htmlFor="account-email" className="form-label">
-              البريد الإلكتروني
-              <span className="optional-tag">(اختياري)</span>
+              البريد الإلكتروني *
             </label>
             <div className="form-input-wrap">
               <Mail size={17} className="form-input-icon" />
@@ -68,8 +67,7 @@ const OptionalAccountSection: React.FC<OptionalAccountSectionProps> = ({
           {/* Password */}
           <div className="form-group">
             <label htmlFor="account-password" className="form-label">
-              كلمة المرور
-              <span className="optional-tag">(اختياري)</span>
+              كلمة المرور *
             </label>
             <div className="form-input-wrap">
               <Lock size={17} className="form-input-icon" />

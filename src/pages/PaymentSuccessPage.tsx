@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Home, ShoppingBag, CreditCard, Package, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, Home, ShoppingBag, CreditCard, Package } from 'lucide-react';
 
 type Bubble = {
   id: number;
@@ -70,18 +70,16 @@ export const PaymentSuccessPage: React.FC = () => {
     };
   }, []);
 
-  // ── Auto-redirect countdown (success only) ────────────────────
-  const [countdown, setCountdown] = useState(10);
+  // ── Clear cart on successful order landing ─────────────────────
   useEffect(() => {
-    if (!isSuccess || isPending) return;
-    const t = setInterval(() => {
-      setCountdown(c => {
-        if (c <= 1) { clearInterval(t); navigate('/'); }
-        return c - 1;
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, [isSuccess, isPending, navigate]);
+    if (isSuccess && !isPending) {
+      localStorage.setItem('cart', JSON.stringify([]));
+      localStorage.setItem('elbat_cart', JSON.stringify([]));
+      window.dispatchEvent(new Event('storage'));
+    }
+  }, [isSuccess, isPending]);
+
+
 
   // ── Derived display state ─────────────────────────────────────
   const statusColor = isSuccess ? '#2E7D32' : '#C62828';
@@ -277,26 +275,7 @@ export const PaymentSuccessPage: React.FC = () => {
           )}
         </div>
 
-        {/* Countdown bar (success only) */}
-        {isSuccess && !isPending && (
-          <div style={{ marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '0.5rem' }}>
-              <Clock size={13} style={{ color: '#999' }} />
-              <p style={{ fontSize: '0.78rem', color: '#999', margin: 0 }}>
-                سيتم توجيهك للرئيسية خلال {countdown} ثانية
-              </p>
-            </div>
-            <div style={{ height: '4px', background: '#E0E0E0', borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                background: 'linear-gradient(90deg,#43A047,#66BB6A)',
-                borderRadius: '4px',
-                width: `${(countdown / 10) * 100}%`,
-                transition: 'width 1s linear',
-              }} />
-            </div>
-          </div>
-        )}
+
 
         {/* Action buttons */}
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>

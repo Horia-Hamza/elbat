@@ -9,9 +9,10 @@ export interface GuestCheckoutItem {
 export interface GuestCheckoutPayload {
   firstName: string;
   lastName: string;
-  email: string | null;
+  email?: string;
   phoneNumber: string;
-  password: string | null;
+  password?: string;
+  paymentMethod: number;
   country: string | null;
   state: string | null;
   city: string | null;
@@ -37,4 +38,15 @@ export const paymentsApi = {
 
   verifyPayment: (transactionId: string) =>
     apiFetch<any>(`/payment/verify/${transactionId}`),
+
+  getPaymentsByStatus: (page: number = 1, pageSize: number = 20) =>
+    apiFetch<any>(`/Payment/admin/GetByPaymentStatus?page=${page}&pageSize=${pageSize}`),
+
+  getLatestPaymentByOrderId: (orderId: number) =>
+    apiFetch<any>(`/Payment/order/${orderId}/latest`),
+
+  approveManualPayment: (orderId: number) =>
+    apiFetch<any>(`/Payment/order/${orderId}/approve-manual-payment`, {
+      method: 'POST',
+    }),
 };

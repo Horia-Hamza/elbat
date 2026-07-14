@@ -34,6 +34,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [iframeHeight, setIframeHeight] = useState<string>('100vh');
 
   // Swipe logic
   const touchStartX = useRef(0);
@@ -103,6 +104,12 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
           onAddToCart(product, qty, selectedColor, selectedSize);
         }
       }
+      if (event.data && event.data.type === 'BUY_NOW') {
+        const qty = event.data.quantity || 1;
+        if (product) {
+          onBuyNow(product, qty, selectedColor, selectedSize);
+        }
+      }
       if (event.data && event.data.type === 'ADD_TO_WISHLIST') {
         if (product) {
           const mockEvent = {
@@ -111,6 +118,9 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
           } as unknown as React.MouseEvent;
           onToggleFavorite(String(product.id), mockEvent);
         }
+      }
+      if (event.data && event.data.type === 'RESIZE') {
+        setIframeHeight(`${event.data.height}px`);
       }
     };
 
@@ -165,12 +175,16 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     customHtml = replaceAll(customHtml, '{{sku}}', product.sku || '');
     customHtml = replaceAll(customHtml, '{{id}}', `${product.id}`);
 
-    // Inject script to bridge interactive buttons back to the React parent
+    // Inject script and style to bridge interactive buttons and hide selectors
     const scriptToInject = `
+      <style>
+        .selectors-section { display: none !important; }
+      </style>
       <script>
         window.addEventListener('DOMContentLoaded', () => {
           const registeredCart = new Set();
           const registeredWish = new Set();
+          const registeredBuy = new Set();
 
           const cartBtns = document.querySelectorAll('.btn-cart, button[class*="cart"], button[id*="cart"]');
           cartBtns.forEach(btn => {
@@ -190,6 +204,29 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                 btn.addEventListener('click', (e) => {
                   e.preventDefault();
                   window.parent.postMessage({ type: 'ADD_TO_CART', quantity: 1 }, '*');
+                });
+              }
+            }
+          });
+
+          const buyBtns = document.querySelectorAll('.btn-buy-now, .btn-buy, button[class*="buy"], button[id*="buy"]');
+          buyBtns.forEach(btn => {
+            if (!registeredBuy.has(btn)) {
+              registeredBuy.add(btn);
+              btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.parent.postMessage({ type: 'BUY_NOW', quantity: 1 }, '*');
+              });
+            }
+          });
+
+          document.querySelectorAll('button').forEach(btn => {
+            if (!registeredBuy.has(btn)) {
+              if (btn.textContent.includes('شراء الآن') || btn.textContent.includes('الشراء الآن') || btn.textContent.includes('شراء') || btn.textContent.includes('buy') || btn.textContent.includes('Buy')) {
+                registeredBuy.add(btn);
+                btn.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  window.parent.postMessage({ type: 'BUY_NOW', quantity: 1 }, '*');
                 });
               }
             }
@@ -217,6 +254,23 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
               }
             }
           });
+
+          // Dynamic height adjustment to prevent double scrollbars
+          const reportHeight = () => {
+            const height = document.documentElement.scrollHeight || document.body.scrollHeight;
+            window.parent.postMessage({ type: 'RESIZE', height: height }, '*');
+          };
+
+          // Send height on load, DOM load and resize
+          reportHeight();
+          window.addEventListener('load', reportHeight);
+          window.addEventListener('resize', reportHeight);
+
+          // Watch for changes in the document body size
+          if (window.ResizeObserver) {
+            const observer = new ResizeObserver(reportHeight);
+            observer.observe(document.body);
+          }
         });
       </script>
     `;
@@ -271,11 +325,12 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   return (
     <div style={{ width: '100%' }}>
       {product.pageDesign ? (
-        <div style={{ width: '100%', minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
           <iframe
             srcDoc={customHtml}
-            style={{ width: '100%', flex: 1, minHeight: '100vh', border: 'none' }}
+            style={{ width: '100%', height: iframeHeight, border: 'none', overflow: 'hidden' }}
             title={product.name}
+            scrolling="no"
             sandbox="allow-same-origin allow-scripts"
           />
         </div>

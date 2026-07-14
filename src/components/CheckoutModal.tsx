@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X, ChevronLeft, ChevronRight, Truck, Check, Sparkles,
   User, MapPin, ShoppingBag, Loader2, AlertCircle, ChevronDown
@@ -8,12 +8,12 @@ import { paymentsApi } from '../api/payments';
 import { authApi } from '../api/auth';
 import { shippingZonesApi } from '../api/shippingZones';
 import type { ShippingZone } from '../api/shippingZones';
+import { trackPurchase } from '../utils/tracking';
 
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
   cartItems: CartItem[];
-  onCheckoutSuccess: (orderId: string, customerName: string) => void;
 }
 
 const FIELD_STYLE: React.CSSProperties = {
@@ -44,8 +44,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   onClose,
   cartItems,
-  onCheckoutSuccess,
 }) => {
+  const formBodyRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState(1); // 1: Personal, 2: Shipping, 3: Summary
 
   // ── Personal Info ──────────────────────────────────────────
@@ -73,6 +73,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('online');
+  const [isCreateAccountOpen, setIsCreateAccountOpen] = useState(false);
 
   // ── Totals ─────────────────────────────────────────────────
   const subtotal = cartItems.reduce(
@@ -121,39 +122,41 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   };
 
+  const showErrorMessage = (msg: string) => {
+    setError(msg);
+    if (formBodyRef.current) {
+      formBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   // ── Navigation ──────────────────────────────────
   const handleNextStep = () => {
     setError(null);
     if (step === 1) {
-      // Validate based on payment method
-      if (paymentMethod === 'online') {
-        if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || !password.trim()) {
-          setError('الرجاء تعبئة الاسم الأول، الاسم الأخير، البريد الإلكتروني، رقم الجوال، وكلمة المرور للدفع الإلكتروني.');
+      // First Name, Last Name, and Phone are always required.
+      if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
+        showErrorMessage('الرجاء تعبئة الاسم الأول، الاسم الأخير، ورقم الجوال.');
+        return;
+      }
+      // If they want to create an account, email and password are required
+      if (isCreateAccountOpen) {
+        if (!email.trim() || !password.trim()) {
+          showErrorMessage('الرجاء إدخال البريد الإلكتروني وكلمة المرور لإنشاء حسابك.');
           return;
         }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          setError('الرجاء إدخال بريد إلكتروني صحيح.');
-          return;
-        }
-      } else {
-        // COD: Email & Password are optional. First Name, Last Name, and Phone are required.
-        if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
-          setError('الرجاء تعبئة الاسم الأول، الاسم الأخير، ورقم الجوال.');
-          return;
-        }
-        if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          setError('الرجاء إدخال بريد إلكتروني صحيح.');
+          showErrorMessage('الرجاء إدخال بريد إلكتروني صحيح.');
           return;
         }
       }
       setStep(2);
     } else if (step === 2) {
       if (!selectedZone) {
-        setError('الرجاء اختيار المحافظة أولاً.');
+        showErrorMessage('الرجاء اختيار المحافظة أولاً.');
         return;
       }
       if (!addressLine1.trim()) {
-        setError('الرجاء إدخال عنوان التوصيل.');
+        showErrorMessage('الرجاء إدخال عنوان التوصيل.');
         return;
       }
       setStep(3);
@@ -167,6 +170,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   // ── Place Order ────────────────────────────────────────────
   const handlePlaceOrder = async () => {
+    console.log('🚀 [CheckoutModal] handlePlaceOrder triggered!');
     setError(null);
     setLoading(true);
 
@@ -176,21 +180,29 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       quantity: item.quantity,
     }));
 
-    const checkoutPayload = {
+    const checkoutPayload: any = {
       firstName,
       lastName,
-      email:         email.trim()         || null,
       phoneNumber: phone,
-      password:      password.trim()      || null,
+      paymentMethod: paymentMethod === 'cod' ? 4 : 1, // COD = 4, CreditCard = 1
       country:       country.trim()       || null,
       state:         state.trim()         || null,
       city:          city.trim()          || null,
       addressLine1:  addressLine1.trim()  || null,
       addressLine2:  addressLine2.trim()  || null,
-      couponId:      couponCode.trim()    ? 0 : null,   // couponId resolved from code; pass null if absent
+      couponId:      couponCode.trim()    ? 0 : null,
       notes:         notes.trim()         || null,
       items,
     };
+    console.log('🚀 [CheckoutModal] checkoutPayload:', checkoutPayload);
+
+    // Only send email/password if filled and relevant
+    if (email.trim()) {
+      checkoutPayload.email = email.trim();
+    }
+    if (isCreateAccountOpen && password.trim()) {
+      checkoutPayload.password = password.trim();
+    }
 
     const registerPayload = { email, password, firstName, lastName };
 
@@ -198,7 +210,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       // Call both APIs simultaneously
       const [checkoutResult, registerResult] = await Promise.allSettled([
         paymentsApi.checkoutAsGuest(checkoutPayload),
-        ...(password.trim() && email.trim() ? [authApi.register(registerPayload)] : []),
+        ...(isCreateAccountOpen && password.trim() && email.trim() ? [authApi.register(registerPayload)] : []),
       ]);
 
       // Checkout must succeed
@@ -214,23 +226,36 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       const orderData = checkoutResult.value;
 
       // ── Handle Payment Method Redirection / Process ───────────
-      if (paymentMethod === 'cod') {
-        const orderIdNumber = Number(orderData?.orderId || orderData?.id || 0);
-        if (orderIdNumber > 0) {
-          try {
-            await paymentsApi.processPayment(orderIdNumber, 'COD');
-          } catch (e) {
-            console.error('Failed to set payment method to COD on backend:', e);
-          }
+      if (!orderData?.requiresPayment) {
+        const orderNum = orderData?.orderNumber || orderData?.orderId?.toString() || `COD-${Date.now()}`;
+        
+        // Track purchase via pixels
+        try {
+          trackPurchase(
+            orderNum,
+            cartItems.map(item => ({
+              product: { id: item.product.id, price: item.product.salePrice !== null && item.product.salePrice !== undefined ? item.product.salePrice : item.product.basePrice },
+              quantity: item.quantity
+            }))
+          );
+        } catch (e) {
+          console.error('Failed to track COD purchase:', e);
         }
+
+        // Empty cart in localStorage before redirecting
+        localStorage.setItem('cart', JSON.stringify([]));
+        localStorage.setItem('elbat_cart', JSON.stringify([]));
+
         resetForm();
-        const orderNum = orderData?.orderNumber || `COD-${orderIdNumber || Date.now()}`;
-        // Redirect to local payment success page mimicking Paymob callback format
-        window.location.href = `/payment/success?success=true&merchant_order_id=${orderNum}&amount_cents=${total * 100}&currency=EGP&source_data.type=cod&data.message=Approved`;
+        window.location.href = `/payment/result?success=true&merchant_order_id=${orderNum}&amount_cents=${total * 100}&currency=EGP&source_data.type=cod&data.message=Approved`;
         return;
       }
 
       if (orderData?.checkoutUrl) {
+        // Empty cart in localStorage before redirecting to Paymob checkout URL
+        localStorage.setItem('cart', JSON.stringify([]));
+        localStorage.setItem('elbat_cart', JSON.stringify([]));
+        
         resetForm();
         window.location.href = orderData.checkoutUrl;
         return;
@@ -242,10 +267,26 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         orderData?.orderNumber ||
         'BAT-' + Math.floor(Math.random() * 900000 + 100000);
 
-      onCheckoutSuccess(orderId, `${firstName} ${lastName}`);
+      try {
+        trackPurchase(
+          orderId,
+          cartItems.map(item => ({
+            product: { id: item.product.id, price: item.product.salePrice !== null && item.product.salePrice !== undefined ? item.product.salePrice : item.product.basePrice },
+            quantity: item.quantity
+          }))
+        );
+      } catch (e) {
+        console.error('Failed to track fallback purchase:', e);
+      }
+
+      localStorage.setItem('cart', JSON.stringify([]));
+      localStorage.setItem('elbat_cart', JSON.stringify([]));
+
       resetForm();
+      window.location.href = `/payment/result?success=true&merchant_order_id=${orderId}&amount_cents=${total * 100}&currency=EGP&source_data.type=fallback&data.message=Approved`;
     } catch (err: any) {
-      setError(err.message || 'حدث خطأ أثناء معالجة الطلب. يرجى المحاولة مجدداً.');
+      console.error('❌ [CheckoutModal] handlePlaceOrder failed:', err);
+      showErrorMessage(err.message || 'حدث خطأ أثناء معالجة الطلب. يرجى المحاولة مجدداً.');
     } finally {
       setLoading(false);
     }
@@ -258,6 +299,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setAddressLine2(''); setNotes(''); setCouponCode('');
     setSelectedZone(null);
     setPaymentMethod('online');
+    setIsCreateAccountOpen(false);
     setError(null);
   };
 
@@ -295,7 +337,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="checkout-form-body" style={{ overflowY: 'auto', flex: 1 }}>
+        <div ref={formBodyRef} className="checkout-form-body" style={{ overflowY: 'auto', flex: 1 }}>
 
           {/* Error Banner */}
           {error && (
@@ -373,27 +415,73 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
 
               <div style={GROUP}>
-                <label style={LABEL_STYLE}>
-                  البريد الإلكتروني {paymentMethod === 'online' ? '*' : '(اختياري)'}
-                </label>
-                <input style={FIELD_STYLE} type="email" placeholder="example@email.com" value={email} onChange={e => setEmail(e.target.value)} dir="ltr" />
-              </div>
-
-              <div style={GROUP}>
                 <label style={LABEL_STYLE}>رقم الجوال *</label>
-                <input style={FIELD_STYLE} type="tel" placeholder="05xxxxxxxx" value={phone} onChange={e => setPhone(e.target.value)} dir="ltr" />
+                <input style={FIELD_STYLE} type="tel" placeholder="01xxxxxxxxx" value={phone} onChange={e => setPhone(e.target.value)} dir="ltr" />
               </div>
 
-              <div style={GROUP}>
-                <label style={LABEL_STYLE}>
-                  كلمة المرور {paymentMethod === 'online' ? '*' : '(اختياري — لإنشاء حساب)'}
-                </label>
-                <input style={FIELD_STYLE} type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} dir="ltr" />
-              </div>
+              {/* Collapsible optional account creation */}
+              <div style={{
+                marginTop: '1.25rem',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)',
+                overflow: 'hidden'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateAccountOpen(!isCreateAccountOpen)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    background: '#F8FBFD',
+                    border: 'none',
+                    textAlign: 'right',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontWeight: 'bold',
+                    fontSize: '0.9rem',
+                    color: 'var(--primary-dark)',
+                    outline: 'none'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                    <input
+                      type="checkbox"
+                      checked={isCreateAccountOpen}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setIsCreateAccountOpen(e.target.checked);
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span>إنشاء حساب لتتبع حالة الطلب (اختياري)</span>
+                  </div>
+                  <ChevronDown
+                    size={16}
+                    style={{
+                      transform: isCreateAccountOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s'
+                    }}
+                  />
+                </button>
 
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                💡 {paymentMethod === 'online' ? 'يرجى إدخال كلمة المرور والبريد الإلكتروني لإتمام الدفع الإلكتروني الآمن وإنشاء حسابك.' : 'إذا أضفت كلمة مرور وبريد إلكتروني، سيتم إنشاء حساب لك تلقائياً عند إتمام الطلب.'}
-              </p>
+                {isCreateAccountOpen && (
+                  <div style={{ padding: '1rem', background: '#fff', borderTop: '1px solid var(--border)' }}>
+                    <div style={GROUP}>
+                      <label style={LABEL_STYLE}>البريد الإلكتروني *</label>
+                      <input style={FIELD_STYLE} type="email" placeholder="example@email.com" value={email} onChange={e => setEmail(e.target.value)} dir="ltr" />
+                    </div>
+                    <div style={GROUP}>
+                      <label style={LABEL_STYLE}>كلمة المرور *</label>
+                      <input style={FIELD_STYLE} type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} dir="ltr" />
+                    </div>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
+                      💡 سيتم إنشاء حسابك بالبريد الإلكتروني المدخل لمتابعة الطلبات وتفاصيل الشحن لاحقاً.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

@@ -540,28 +540,7 @@ body {
             <span class="discount-badge" id="discount-percent">توفير رائع</span>
           </div>
 
-          <div class="selectors-section">
-            <div>
-              <div class="selector-title">المقاس المتوفر:</div>
-              <div class="size-options">
-                <button class="size-btn" onclick="selectSize(this)">S</button>
-                <button class="size-btn selected" onclick="selectSize(this)">M</button>
-                <button class="size-btn" onclick="selectSize(this)">L</button>
-                <button class="size-btn" onclick="selectSize(this)">XL</button>
-                <button class="size-btn" onclick="selectSize(this)">XXL</button>
-              </div>
-            </div>
-
-            <div>
-              <div class="selector-title">اللون المتوفر:</div>
-              <div class="color-options">
-                <div class="color-dot selected" style="background-color: #236B93;" onclick="selectColor(this)"></div>
-                <div class="color-dot" style="background-color: #0F172A;" onclick="selectColor(this)"></div>
-                <div class="color-dot" style="background-color: #64748B;" onclick="selectColor(this)"></div>
-                <div class="color-dot" style="background-color: #E2E8F0;" onclick="selectColor(this)"></div>
-              </div>
-            </div>
-          </div>
+          <!-- Size and Color selectors removed -->
 
           <!-- Desktop Buttons -->
           <div class="desktop-actions">
