@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, Folders, FolderTree, ShoppingCart, Bell, Search, Settings, LogOut, Tag, Palette, Truck, MapPin, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Package, Folders, FolderTree, ShoppingCart, Bell, Search, Settings, LogOut, Tag, Palette, Truck, MapPin, CreditCard, Layers } from 'lucide-react';
 import '../admin.css';
 
 export const AdminLayout: React.FC = () => {
@@ -9,6 +9,7 @@ export const AdminLayout: React.FC = () => {
   const navLinks = [
     { path: '/admin', icon: LayoutDashboard, label: 'لوحة القيادة', exact: true },
     { path: '/admin/products', icon: Package, label: 'إدارة المنتجات' },
+    { path: '/admin/variants', icon: Layers, label: 'متغيرات المنتجات' },
     { path: '/admin/page-designs', icon: Palette, label: 'تصميم الصفحات' },
     { path: '/admin/categories', icon: Folders, label: 'التصنيفات' },
     { path: '/admin/subcategories', icon: FolderTree, label: 'الأقسام الفرعية' },
@@ -49,7 +50,7 @@ export const AdminLayout: React.FC = () => {
             </NavLink>
           ))}
 
-          <div style={{ marginTop: 'auto' }}>
+          <div style={{ marginTop: 'auto', paddingTop: '1rem' }}>
             <NavLink to="/" className="admin-nav-item" style={{ color: 'var(--admin-warning)' }}>
               <LogOut size={20} />
               العودة للمتجر

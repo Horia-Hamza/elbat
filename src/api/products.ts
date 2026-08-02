@@ -210,5 +210,15 @@ export const inventoryApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  /**
+   * Delete an inventory record by ID.
+   * DELETE /api/Inventory/{id}
+   */
+  deleteInventory: (id: number) =>
+    apiFetch<boolean>(`/Inventory/${id}`, {
+      method: 'DELETE',
+    }),
 };
+
 

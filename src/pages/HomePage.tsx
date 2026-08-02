@@ -7,6 +7,7 @@ import { useCategories } from '../hooks/useCategories';
 import { useProducts } from '../hooks/useProducts';
 import { HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useSEO } from '../hooks/useSEO';
 
 interface HomePageProps {
   activeCategory: string;
@@ -46,6 +47,13 @@ export const HomePage: React.FC<HomePageProps> = ({
   handleQuickAddToCart,
 }) => {
   const navigate = useNavigate();
+
+  useSEO({
+    title: 'متجر البطّ | منتجات مبتكرة للمنزل والعناية الشخصية',
+    description: 'تسوق من متجر البطّ — أفضل المنتجات المبتكرة للمنزل والعناية الشخصية بأسعار مناسبة وشحن سريع لجميع أنحاء مصر. اكتشف عروضنا الحصرية الآن!',
+    url: '/',
+    type: 'website',
+  });
 
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [hoveredDuck, setHoveredDuck] = useState<number | null>(null);
@@ -172,11 +180,11 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       <div id="explore-products" style={{ scrollMarginTop: '100px' }}>
         <Categories
-          categories={categories}
-          activeCategory={activeCategory}
-          onCategorySelect={(key) => {
-            setActiveCategory(key);
-            setActiveSubCategory('all');
+          subCategories={subCategories}
+          activeSubCategory={activeSubCategory}
+          onSubCategorySelect={(key) => {
+            setActiveSubCategory(key);
+            setActiveCategory('all');
             setShowOnlyFavs(false);
           }}
         />
@@ -186,9 +194,9 @@ export const HomePage: React.FC<HomePageProps> = ({
             <h2 className="section-title">
               {showOnlyFavs 
                 ? 'المنتجات المفضلة لديك' 
-                : activeCategory === 'all' 
-                  ? 'منتجات البط المميزه' 
-                  : categories.find(c => c.id.toString() === activeCategory)?.name || 'المنتجات'}
+                : activeSubCategory === 'all' 
+                  ? (activeCategory === 'all' ? 'منتجات البط المميزه' : categories.find(c => c.id.toString() === activeCategory)?.name || 'المنتجات')
+                  : subCategories.find(sc => sc.id.toString() === activeSubCategory)?.name || 'المنتجات'}
             </h2>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               تم العثور على {filteredProducts.length} منتج

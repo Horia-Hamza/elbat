@@ -103,14 +103,55 @@ export interface ProductVideo {
 }
 
 
+// ── VariantType enum ──────────────────────────────────────────
+export type VariantType = 1 | 2 | 3 | 4 | 5;
+export const VARIANT_TYPE_LABELS: Record<VariantType, string> = {
+  1: 'لون (Color)',
+  2: 'مقاس (Size)',
+  3: 'خامة (Material)',
+  4: 'ستايل (Style)',
+  5: 'مخصص (Custom)',
+};
+
+// ── ProductVariant ─────────────────────────────────────────────
 export interface ProductVariant {
   id: number;
-  productId: number;
-  color: string | null;
-  size: string | null;
-  price: number | null;
+  name: string;
+  value: string;
   sku: string | null;
+  priceAdjustment: number;
+  type: VariantType;
   isActive: boolean;
+  productId: number;
+  inventory: VariantInventory | null;
+  images: ProductImage[];
+}
+
+export interface VariantInventory {
+  id: number;
+  productId: number;
+  variantId: number;
+  quantity: number;
+  reservedQuantity: number;
+  availableQuantity: number;
+  lowStockThreshold: number;
+  isLowStock: boolean;
+  isOutOfStock: boolean;
+  allowBackorder: boolean;
+}
+
+export interface CreateProductVariantDto {
+  name: string;
+  value: string;
+  sku?: string;
+  priceAdjustment: number;
+  isActive: boolean;
+  productId: number;
+  type: VariantType;
+  quantity: number;
+  lowStockThreshold: number;
+  trackInventory: boolean;
+  allowBackorder: boolean;
 }
 
 // ── Pagination ────────────────────────────────────────────────

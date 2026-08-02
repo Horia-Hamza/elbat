@@ -1,9 +1,17 @@
 import React from 'react';
 import { Shield, Eye, Lock } from 'lucide-react';
 import { getStoreSettings } from '../../utils/storeSettings';
+import { useSEO } from '../../hooks/useSEO';
 
 export const PrivacyPolicy: React.FC = () => {
   const settings = getStoreSettings();
+
+  useSEO({
+    title: 'سياسة الخصوصية | متجر البطّ',
+    description: 'تعرف على سياسة الخصوصية لمتجر البطّ وكيفية جمع واستخدام وحماية بياناتك الشخصية عند التسوق عبر موقعنا.',
+    url: '/privacy-policy',
+  });
+
   return (
     <div style={{ maxWidth: '800px', margin: '3rem auto', padding: '0 1.5rem', direction: 'rtl', textAlign: 'right', lineHeight: 1.8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '2px solid var(--primary)', paddingBottom: '1rem', marginBottom: '2rem' }}>

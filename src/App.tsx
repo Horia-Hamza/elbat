@@ -38,6 +38,7 @@ import { getStoreSettings } from './utils/storeSettings';
 import { AdminLayout } from './layouts/AdminLayout';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminProducts } from './pages/admin/AdminProducts';
+import { AdminVariants } from './pages/admin/AdminVariants';
 import { AdminCategories } from './pages/admin/AdminCategories';
 import { AdminOrders } from './pages/admin/AdminOrders';
 import { AdminBrands } from './pages/admin/AdminBrands';
@@ -485,6 +486,7 @@ function App() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminDashboard />} />
         <Route path="products" element={<AdminProducts />} />
+        <Route path="variants" element={<AdminVariants />} />
         <Route path="page-designs" element={<AdminPageDesigns />} />
         <Route path="page-designs/:productId" element={<AdminPageDesigns />} />
         <Route path="categories" element={<AdminCategories />} />

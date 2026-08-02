@@ -41,7 +41,6 @@ export const Hero: React.FC<HeroProps> = ({
           <span>البط</span> بيجيب لك<br />
           كل اللي بتحبه لحد بيتك!
         </h1>
-
         <div className="hero-buttons">
           <button className="btn-primary" onClick={onExploreClick}>
             تسوق الآن
@@ -141,6 +140,7 @@ export const Hero: React.FC<HeroProps> = ({
           })}
         </div>
       </div>
+
     </div>
   );
 };

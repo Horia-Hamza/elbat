@@ -81,6 +81,8 @@ export const PaymentSuccessPage: React.FC = () => {
 
 
 
+  const isCod = sourceType?.toLowerCase() === 'cod' || searchParams.get('payment_method') === 'cod';
+
   // ── Derived display state ─────────────────────────────────────
   const statusColor = isSuccess ? '#2E7D32' : '#C62828';
   const statusBg = isSuccess
@@ -200,20 +202,20 @@ export const PaymentSuccessPage: React.FC = () => {
         {/* Title */}
         <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: statusColor, margin: '0 0 0.4rem', lineHeight: 1.3 }}>
           {isPending
-            ? '⏳ الدفع قيد المعالجة'
+            ? '⏳ الطلب قيد المعالجة'
             : isSuccess
-              ? 'تم الدفع بنجاح!'
-              : '❌ فشلت عملية الدفع'}
+              ? (isCod ? 'تم استلام طلبك بنجاح!' : 'تم الدفع بنجاح!')
+              : '❌ فشلت عملية الطلب'}
         </h1>
 
         <p style={{ color: '#666', fontSize: '0.93rem', margin: '0 0 1.5rem', lineHeight: 1.75 }}>
           {isPending
-            ? 'جاري معالجة عملية الدفع، سيتم التحديث تلقائياً.'
+            ? 'جاري معالجة الطلب، سيتم التحديث تلقائياً.'
             : isSuccess
-              ? 'شكراً لتسوقك! طلبك قيد التجهيز وسيصلك قريباً.'
+              ? (isCod ? 'شكراً لتسوقك! تم تأكيد طلبك وسيتم الدفع نقداً عند الاستلام.' : 'شكراً لتسوقك! طلبك قيد التجهيز وسيصلك قريباً.')
               : errorOccurred
-                ? 'حدث خطأ أثناء معالجة الدفع. يرجى المحاولة مجدداً.'
-                : 'لم تكتمل عملية الدفع. يمكنك المحاولة مجدداً.'}
+                ? 'حدث خطأ أثناء معالجة الطلب. يرجى المحاولة مجدداً.'
+                : 'لم يكتمل الطلب. يمكنك المحاولة مجدداً.'}
         </p>
 
         {/* ── Transaction detail cards ──────────────────────────── */}
@@ -234,7 +236,9 @@ export const PaymentSuccessPage: React.FC = () => {
           {amountDisplay && (
             <div style={detailRow}>
               <span style={{ fontSize: '1rem', flexShrink: 0 }}>💰</span>
-              <span style={{ color: '#555', fontSize: '0.85rem' }}>المبلغ المدفوع</span>
+              <span style={{ color: '#555', fontSize: '0.85rem' }}>
+                {isCod ? 'إجمالي المطلوب عند الاستلام' : 'المبلغ المدفوع'}
+              </span>
               <span style={{ marginRight: 'auto', fontWeight: 800, color: '#2E7D32', fontSize: '0.95rem' }}>
                 {amountDisplay} {currency}
               </span>
@@ -256,9 +260,9 @@ export const PaymentSuccessPage: React.FC = () => {
           {txnMessage && (
             <div style={detailRow}>
               <span style={{ fontSize: '1rem', flexShrink: 0 }}>🔐</span>
-              <span style={{ color: '#555', fontSize: '0.85rem' }}>حالة المعاملة</span>
+              <span style={{ color: '#555', fontSize: '0.85rem' }}>حالة الطلب</span>
               <span style={{ marginRight: 'auto', fontWeight: 700, color: isSuccess ? '#2E7D32' : '#C62828', fontSize: '0.85rem' }}>
-                {txnMessage}
+                {txnMessage === 'Approved' ? (isCod ? 'تم تأكيد الطلب' : 'مقبولة (Approved)') : txnMessage}
               </span>
             </div>
           )}
@@ -267,13 +271,14 @@ export const PaymentSuccessPage: React.FC = () => {
           {sourceType && sourceType !== 'card' && (
             <div style={detailRow}>
               <span style={{ fontSize: '1rem', flexShrink: 0 }}>📱</span>
-              <span style={{ color: '#555', fontSize: '0.85rem' }}>نوع الدفع</span>
+              <span style={{ color: '#555', fontSize: '0.85rem' }}>طريقة الدفع</span>
               <span style={{ marginRight: 'auto', fontWeight: 600, color: '#333', fontSize: '0.85rem' }}>
-                {sourceType}
+                {sourceType.toLowerCase() === 'cod' ? 'الدفع عند الاستلام (COD)' : sourceType}
               </span>
             </div>
           )}
         </div>
+
 
 
 

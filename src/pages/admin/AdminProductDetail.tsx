@@ -6,10 +6,12 @@ import {
   Bot, Copy, Check, Wand2, Send, BarChart2, Trash2,
 } from 'lucide-react';
 import { productsApi, inventoryApi, productImagesApi } from '../../api/products';
+import { productVariantsApi } from '../../api/productVariants';
 import { pageDesignsApi } from '../../api/pageDesigns';
 import { IMAGES_BASE_URL } from '../../api/client';
 import { apiFetch } from '../../api/client';
-import type { ApiProduct } from '../../types/api';
+import type { ApiProduct, ProductVariant, VariantType } from '../../types/api';
+import { VARIANT_TYPE_LABELS as VARIANT_LABELS } from '../../types/api';
 import type { ApiInventory } from '../../api/products';
 
 interface AdminProductDetailProps {
@@ -19,7 +21,7 @@ interface AdminProductDetailProps {
   initialTab?: TabKey;
 }
 
-type TabKey = 'info' | 'images' | 'videos' | 'design' | 'ai' | 'create-design' | 'inventory';
+type TabKey = 'info' | 'images' | 'videos' | 'design' | 'ai' | 'create-design' | 'inventory' | 'variants';
 
 const BASE = IMAGES_BASE_URL;
 
@@ -118,6 +120,24 @@ export const AdminProductDetail: React.FC<AdminProductDetailProps> = ({ productI
   const [reviews, setReviews]     = useState<unknown[]>([]);
   const [inventory, setInventory] = useState<ApiInventory | null>(null);
 
+  /* Variants */
+  const [variants, setVariants]           = useState<ProductVariant[]>([]);
+  const [variantsLoading, setVariantsLoading] = useState(false);
+  const [variantSaving, setVariantSaving] = useState(false);
+  const [variantError, setVariantError]   = useState<string | null>(null);
+  const [variantSuccess, setVariantSuccess] = useState(false);
+  const [variantForm, setVariantForm]     = useState<{
+    name: string; value: string; sku: string;
+    priceAdjustment: number; type: VariantType;
+    isActive: boolean; quantity: number;
+    lowStockThreshold: number; trackInventory: boolean;
+    allowBackorder: boolean;
+  }>({
+    name: '', value: '', sku: '', priceAdjustment: 0, type: 1,
+    isActive: true, quantity: 0, lowStockThreshold: 5,
+    trackInventory: true, allowBackorder: false,
+  });
+
   /* Inventory form */
   const [invForm, setInvForm] = useState({
     quantity: 100,
@@ -171,6 +191,13 @@ export const AdminProductDetail: React.FC<AdminProductDetailProps> = ({ productI
             }
           })
           .catch(() => {/* silently ignore */});
+
+        // fire-and-forget: variants
+        setVariantsLoading(true);
+        productVariantsApi.getByProduct(productId)
+          .then(r => setVariants(Array.isArray(r) ? r : []))
+          .catch(() => setVariants([]))
+          .finally(() => setVariantsLoading(false));
       })
       .catch(err => setError(err?.message || 'فشل تحميل المنتج'))
       .finally(() => setLoading(false));
@@ -350,6 +377,44 @@ ${buildAiContext()}
     }
   };
 
+  /* ── Create variant ── */
+  const handleVariantSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!product) return;
+    setVariantSaving(true);
+    setVariantError(null);
+    setVariantSuccess(false);
+    try {
+      const created = await productVariantsApi.create({
+        ...variantForm,
+        productId,
+        sku: variantForm.sku || undefined,
+      });
+      setVariants(prev => [...prev, created]);
+      setVariantSuccess(true);
+      setVariantForm({
+        name: '', value: '', sku: '', priceAdjustment: 0, type: 1,
+        isActive: true, quantity: 0, lowStockThreshold: 5,
+        trackInventory: true, allowBackorder: false,
+      });
+    } catch (err: any) {
+      setVariantError(err?.message || 'حدث خطأ أثناء إضافة المتغير');
+    } finally {
+      setVariantSaving(false);
+    }
+  };
+
+  /* ── Delete variant ── */
+  const handleDeleteVariant = async (id: number) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا المتغير؟')) return;
+    try {
+      await productVariantsApi.delete(id);
+      setVariants(prev => prev.filter(v => v.id !== id));
+    } catch (err: any) {
+      alert(err?.message || 'فشل الحذف');
+    }
+  };
+
   /* ── POST body preview ── */
   const postBodyPreview = () => JSON.stringify({
     name: designName || `تصميم ${product?.name || ''}`,
@@ -366,14 +431,16 @@ ${buildAiContext()}
   };
 
   const TABS: { key: TabKey; label: string; icon: React.ReactNode; disabled?: boolean }[] = [
-    { key: 'info',          label: 'التفاصيل',     icon: <Package size={13} /> },
-    { key: 'images',        label: `الصور (${images.length})`, icon: <ImageIcon size={13} /> },
+    { key: 'info',          label: 'التفاصيل',       icon: <Package size={13} /> },
+    { key: 'images',        label: `الصور (${images.length})`,  icon: <ImageIcon size={13} /> },
     { key: 'videos',        label: `الفيديو (${videos.length})`, icon: <Video size={13} /> },
     { key: 'design',        label: 'التصميم الحالي', icon: <Palette size={13} /> },
-    { key: 'inventory',     label: '📊 المخزون',   icon: <BarChart2 size={13} /> },
-    { key: 'ai',            label: '🤖 سياق AI',   icon: <Bot size={13} /> },
-    { key: 'create-design', label: '🎨 إنشاء تصميم', icon: <Wand2 size={13} /> },
+    { key: 'variants',      label: `🎨 المتغيرات (${variants.length})`, icon: <Layers size={13} /> },
+    { key: 'inventory',     label: '📊 المخزون',     icon: <BarChart2 size={13} /> },
+    { key: 'ai',            label: '🤖 سياق AI',     icon: <Bot size={13} /> },
+    { key: 'create-design', label: '🎨 تصميم جديد',  icon: <Wand2 size={13} /> },
   ];
+
 
   return (
     <div
@@ -844,6 +911,191 @@ ${buildAiContext()}
                     <div style={{ fontSize: '0.72rem', color: 'var(--admin-text-muted)' }}>JSON كامل: المنتج + الصور + الفيديوهات + التقييمات + المخزون</div>
                   </div>
                   <CopyBtn text={buildAiContext()} label="📋 نسخ الكل" />
+                </div>
+              </div>
+            )}
+
+            {/* ══════════════ TAB: VARIANTS ══════════════ */}
+            {activeTab === 'variants' && (
+              <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+                {/* Existing variants list */}
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: '0.75rem', color: 'var(--admin-text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Layers size={15} style={{ color: 'var(--admin-primary)' }} />
+                    المتغيرات الحالية ({variants.length})
+                  </div>
+
+                  {variantsLoading ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--admin-text-muted)' }}>
+                      <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', marginBottom: '0.5rem' }} />
+                      <p style={{ margin: 0 }}>جاري تحميل المتغيرات...</p>
+                    </div>
+                  ) : variants.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--admin-text-muted)', background: 'var(--admin-bg-dark)', borderRadius: 10 }}>
+                      <Layers size={32} style={{ marginBottom: '0.5rem', opacity: 0.35 }} />
+                      <p style={{ margin: 0 }}>لا توجد متغيرات لهذا المنتج — أضف أول متغير أدناه</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                      {variants.map(v => {
+                        const typeLabel = VARIANT_LABELS[v.type] ?? `نوع ${v.type}`;
+                        const isColor = v.type === 1;
+                        const stock = v.inventory;
+                        return (
+                          <div key={v.id} style={{
+                            background: 'var(--admin-bg-dark)', borderRadius: 10,
+                            padding: '0.75rem 1rem', border: '1px solid var(--admin-border)',
+                            display: 'flex', alignItems: 'center', gap: '0.75rem',
+                          }}>
+                            {/* Color swatch or type badge */}
+                            {isColor && /^#[0-9A-Fa-f]{3,6}$/.test(v.value) ? (
+                              <div style={{ width: 32, height: 32, borderRadius: 8, background: v.value, border: '2px solid var(--admin-border)', flexShrink: 0 }} title={v.value} />
+                            ) : (
+                              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--admin-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'white', textAlign: 'center', lineHeight: 1.2 }}>{v.value.substring(0, 3).toUpperCase()}</span>
+                              </div>
+                            )}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>{v.name}</span>
+                                <span style={{ fontSize: '0.72rem', color: '#a5b4fc', background: 'rgba(99,102,241,.15)', padding: '1px 7px', borderRadius: 10, fontWeight: 600 }}>{typeLabel}</span>
+                                {!v.isActive && <span style={{ fontSize: '0.7rem', color: '#ef4444', background: 'rgba(239,68,68,.1)', padding: '1px 7px', borderRadius: 10, fontWeight: 600 }}>مخفي</span>}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginTop: '0.15rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                <span>القيمة: <strong style={{ color: 'var(--admin-text-main)' }}>{v.value}</strong></span>
+                                {v.sku && <span>SKU: <code style={{ color: 'var(--admin-primary)' }}>{v.sku}</code></span>}
+                                {v.priceAdjustment !== 0 && <span>تعديل السعر: <strong style={{ color: v.priceAdjustment > 0 ? '#22c55e' : '#ef4444' }}>{v.priceAdjustment > 0 ? '+' : ''}{v.priceAdjustment} ج.م</strong></span>}
+                                {stock ? (
+                                  <span>المخزون: <strong style={{ color: stock.isOutOfStock ? '#ef4444' : stock.isLowStock ? '#f59e0b' : '#22c55e' }}>{stock.availableQuantity} قطعة</strong></span>
+                                ) : <span style={{ color: '#f59e0b' }}>⚠ لا توجد بيانات مخزون</span>}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--admin-text-muted)' }}>#{v.id}</span>
+                              <button
+                                onClick={() => handleDeleteVariant(v.id)}
+                                style={{ background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.3)', borderRadius: 7, padding: '0.3rem 0.6rem', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', transition: 'all .2s' }}
+                              >
+                                <Trash2 size={12} /> حذف
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Add variant form */}
+                <div style={{ background: 'var(--admin-bg-dark)', borderRadius: 12, padding: '1.25rem', border: '1px solid var(--admin-border)' }}>
+                  <h4 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--admin-text-main)' }}>
+                    <Layers size={16} style={{ color: 'var(--admin-primary)' }} />
+                    إضافة متغير جديد
+                  </h4>
+                  <form onSubmit={handleVariantSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+
+                    {/* Row 1: type */}
+                    <div>
+                      <label style={labelStyle}>نوع المتغير *</label>
+                      <select
+                        style={{ ...inputStyle, cursor: 'pointer' }}
+                        value={variantForm.type}
+                        onChange={e => setVariantForm(f => ({ ...f, type: parseInt(e.target.value) as VariantType }))}
+                        required
+                      >
+                        {([1, 2, 3, 4, 5] as VariantType[]).map(t => (
+                          <option key={t} value={t}>{VARIANT_LABELS[t]}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Row 2: name + value */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div>
+                        <label style={labelStyle}>الاسم * <span style={{ opacity: 0.6 }}>(مثال: أحمر، Large)</span></label>
+                        <input style={inputStyle} required placeholder="مثال: أحمر" value={variantForm.name}
+                          onChange={e => setVariantForm(f => ({ ...f, name: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>القيمة * <span style={{ opacity: 0.6 }}>(مثال: #FF0000، L)</span></label>
+                        <input style={inputStyle} required placeholder="مثال: #FF0000" value={variantForm.value}
+                          onChange={e => setVariantForm(f => ({ ...f, value: e.target.value }))} />
+                      </div>
+                    </div>
+
+                    {/* Color preview */}
+                    {variantForm.type === 1 && /^#[0-9A-Fa-f]{3,6}$/.test(variantForm.value) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.78rem', color: 'var(--admin-text-muted)' }}>
+                        <div style={{ width: 24, height: 24, borderRadius: 6, background: variantForm.value, border: '2px solid var(--admin-border)' }} />
+                        معاينة اللون: {variantForm.value}
+                      </div>
+                    )}
+
+                    {/* Row 3: sku + priceAdjustment */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div>
+                        <label style={labelStyle}>SKU <span style={{ opacity: 0.6 }}>(اختياري)</span></label>
+                        <input style={inputStyle} placeholder="مثال: TSHIRT-RED" value={variantForm.sku}
+                          onChange={e => setVariantForm(f => ({ ...f, sku: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>تعديل السعر (ج.م) <span style={{ opacity: 0.6 }}>(+ أو -)</span></label>
+                        <input type="number" style={inputStyle} placeholder="0" value={variantForm.priceAdjustment}
+                          onChange={e => setVariantForm(f => ({ ...f, priceAdjustment: parseFloat(e.target.value) || 0 }))} />
+                      </div>
+                    </div>
+
+                    {/* Row 4: quantity + lowStockThreshold */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div>
+                        <label style={labelStyle}>الكمية المتاحة *</label>
+                        <input type="number" min={0} style={inputStyle} required placeholder="100" value={variantForm.quantity}
+                          onChange={e => setVariantForm(f => ({ ...f, quantity: parseInt(e.target.value) || 0 }))} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>حد المخزون المنخفض</label>
+                        <input type="number" min={0} style={inputStyle} placeholder="5" value={variantForm.lowStockThreshold}
+                          onChange={e => setVariantForm(f => ({ ...f, lowStockThreshold: parseInt(e.target.value) || 0 }))} />
+                      </div>
+                    </div>
+
+                    {/* Checkboxes */}
+                    <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                      {[
+                        { key: 'isActive', label: 'نشط' },
+                        { key: 'trackInventory', label: 'تتبع المخزون' },
+                        { key: 'allowBackorder', label: 'السماح بالطلب المسبق' },
+                      ].map(cb => (
+                        <label key={cb.key} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer', fontSize: '0.82rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={variantForm[cb.key as keyof typeof variantForm] as boolean}
+                            onChange={e => setVariantForm(f => ({ ...f, [cb.key]: e.target.checked }))}
+                          />
+                          <span>{cb.label}</span>
+                        </label>
+                      ))}
+                    </div>
+
+                    {/* Messages */}
+                    {variantError && (
+                      <div style={{ background: 'rgba(239,68,68,.1)', border: '1px solid var(--admin-danger)', borderRadius: 8, padding: '0.65rem 1rem', color: 'var(--admin-danger)', fontSize: '0.82rem' }}>
+                        ❌ {variantError}
+                      </div>
+                    )}
+                    {variantSuccess && (
+                      <div style={{ background: 'rgba(34,197,94,.1)', border: '1px solid rgba(34,197,94,.4)', borderRadius: 8, padding: '0.65rem 1rem', color: '#22c55e', fontSize: '0.82rem' }}>
+                        ✅ تم إضافة المتغير بنجاح!
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
+                      <button type="submit" disabled={variantSaving} className="admin-btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 130 }}>
+                        {variantSaving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> جاري الحفظ...</> : <><Layers size={14} /> إضافة المتغير</>}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             )}

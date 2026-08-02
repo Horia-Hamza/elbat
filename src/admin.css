@@ -73,6 +73,22 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--admin-border) transparent;
+  }
+
+  .admin-nav::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .admin-nav::-webkit-scrollbar-thumb {
+    background-color: var(--admin-border);
+    border-radius: 4px;
+  }
+
+  .admin-nav::-webkit-scrollbar-track {
+    background: transparent;
   }
   
   .admin-nav-item {

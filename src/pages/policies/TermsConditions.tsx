@@ -1,7 +1,15 @@
 import React from 'react';
 import { Landmark, Scale, FileText } from 'lucide-react';
+import { useSEO } from '../../hooks/useSEO';
 
 export const TermsConditions: React.FC = () => {
+
+  useSEO({
+    title: 'الشروط والأحكام | متجر البطّ',
+    description: 'اطلع على شروط وأحكام استخدام متجر البطّ — حقوقك وواجباتك كعميل عند التسوق عبر موقعنا الإلكتروني.',
+    url: '/terms-conditions',
+  });
+
   return (
     <div style={{ maxWidth: '800px', margin: '3rem auto', padding: '0 1.5rem', direction: 'rtl', textAlign: 'right', lineHeight: 1.8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '2px solid var(--primary)', paddingBottom: '1rem', marginBottom: '2rem' }}>

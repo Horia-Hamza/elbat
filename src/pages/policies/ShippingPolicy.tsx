@@ -1,9 +1,17 @@
 import React from 'react';
 import { Truck, MapPin, Calendar, Check } from 'lucide-react';
 import { getStoreSettings } from '../../utils/storeSettings';
+import { useSEO } from '../../hooks/useSEO';
 
 export const ShippingPolicy: React.FC = () => {
   const settings = getStoreSettings();
+
+  useSEO({
+    title: 'سياسة الشحن والتوصيل | متجر البطّ',
+    description: 'شحن سريع لجميع محافظات مصر خلال 2-5 أيام عمل. تعرف على سياسة الشحن والتوصيل الخاصة بمتجر البطّ.',
+    url: '/shipping-policy',
+  });
+
   return (
     <div style={{ maxWidth: '800px', margin: '3rem auto', padding: '0 1.5rem', direction: 'rtl', textAlign: 'right', lineHeight: 1.8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '2px solid var(--primary)', paddingBottom: '1rem', marginBottom: '2rem' }}>

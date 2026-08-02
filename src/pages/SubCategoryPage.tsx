@@ -4,6 +4,7 @@ import { ProductCard } from '../components/ProductCard';
 import { subCategoriesApi } from '../api/subcategories';
 import { Loader2, AlertCircle } from 'lucide-react';
 import type { ApiProduct } from '../types/api';
+import { useSEO } from '../hooks/useSEO';
 
 interface SubCategoryPageProps {
   favorites: string[];
@@ -35,6 +36,15 @@ export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
   const [subCategory, setSubCategory] = useState<SubCategoryDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useSEO({
+    title: subCategory ? `${subCategory.name} | متجر البطّ` : 'أقسام المتجر | متجر البطّ',
+    description: subCategory
+      ? `تصفح منتجات ${subCategory.name} في متجر البطّ — أفضل المنتجات بأسعار مناسبة وشحن سريع لجميع أنحاء مصر.`
+      : 'متجر البطّ — تصفح منتجاتنا واكتشف عروضنا الحصرية.',
+    url: id ? `/subcategory/${id}` : undefined,
+    type: 'website',
+  });
 
   useEffect(() => {
     if (!id) return;

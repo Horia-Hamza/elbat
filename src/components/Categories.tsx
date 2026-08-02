@@ -1,14 +1,18 @@
 import React, { useRef } from 'react';
 import * as Icons from 'lucide-react';
-import type { Category } from '../types/api';
+import type { SubCategory } from '../types/api';
 
 interface CategoriesProps {
-  categories: Category[];
-  activeCategory: string;
-  onCategorySelect: (key: string) => void;
+  subCategories: SubCategory[];
+  activeSubCategory: string;
+  onSubCategorySelect: (key: string) => void;
 }
 
-export const Categories: React.FC<CategoriesProps> = ({ categories, activeCategory, onCategorySelect }) => {
+export const Categories: React.FC<CategoriesProps> = ({
+  subCategories = [],
+  activeSubCategory,
+  onSubCategorySelect,
+}) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
@@ -20,6 +24,8 @@ export const Categories: React.FC<CategoriesProps> = ({ categories, activeCatego
       });
     }
   };
+
+  const activeSubs = subCategories.filter((sc) => sc.isActive);
 
   return (
     <section className="section-container" style={{ paddingBottom: '1rem', position: 'relative' }}>
@@ -34,8 +40,8 @@ export const Categories: React.FC<CategoriesProps> = ({ categories, activeCatego
 
         <div className="categories-grid" ref={scrollRef}>
           <div
-            className={`category-card ${activeCategory === 'all' ? 'active' : ''}`}
-            onClick={() => onCategorySelect('all')}
+            className={`category-card ${activeSubCategory === 'all' ? 'active' : ''}`}
+            onClick={() => onSubCategorySelect('all')}
           >
             <div className="category-icon-wrapper">
               <Icons.LayoutGrid size={24} />
@@ -43,20 +49,23 @@ export const Categories: React.FC<CategoriesProps> = ({ categories, activeCatego
             <span className="category-name">كل المنتجات</span>
           </div>
           
-          {categories.map((cat) => {
-            const IconComponent = Icons.Folder; // Fallback since API doesn't have icons
-            const isActive = activeCategory === cat.id.toString();
+          {activeSubs.map((sc) => {
+            const isActive = activeSubCategory === sc.id.toString();
             
             return (
               <div
-                key={cat.id.toString()}
+                key={sc.id.toString()}
                 className={`category-card ${isActive ? 'active' : ''}`}
-                onClick={() => onCategorySelect(cat.id.toString())}
+                onClick={() => onSubCategorySelect(sc.id.toString())}
               >
                 <div className="category-icon-wrapper">
-                  <IconComponent size={24} />
+                  {sc.imageUrl ? (
+                    <img src={sc.imageUrl} alt={sc.name} style={{ width: 28, height: 28, objectFit: 'contain' }} />
+                  ) : (
+                    <Icons.Shirt size={24} />
+                  )}
                 </div>
-                <span className="category-name">{cat.name}</span>
+                <span className="category-name">{sc.name}</span>
               </div>
             );
           })}
@@ -69,3 +78,4 @@ export const Categories: React.FC<CategoriesProps> = ({ categories, activeCatego
     </section>
   );
 };
+

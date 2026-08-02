@@ -132,7 +132,6 @@ body{font-family:'Cairo',sans-serif;direction:rtl;background:#0a0a0f;color:white
       <div class="img-main"><img src="{{mainImageUrl}}" alt="{{name}}" onerror="this.src='/logo.png'"/></div>
     </div>
     <div class="info">
-      <div class="tag">{{brandName}} · {{subCategoryName}}</div>
       <h1 class="product-name">{{name}}</h1>
       <p class="product-desc">{{description}}</p>
       <div class="price-block">
@@ -390,34 +389,75 @@ body {
   margin-bottom: 1.5rem; border-top: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-light); padding: 1.25rem 0;
 }
+.selector-group {
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
 .selector-title {
-  font-size: 0.9rem; font-weight: 700;
-  margin-bottom: 0.6rem; color: var(--text-dark);
+  font-size: 0.9rem; font-weight: 700; color: var(--text-dark);
 }
-.size-options {
-  display: flex; gap: 0.5rem; flex-wrap: wrap;
+.selector-title .selected-val {
+  color: var(--primary); font-weight: 800; margin-right: 0.3rem;
 }
+/* Type 1: Color */
+.color-options { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+.color-dot {
+  width: 32px; height: 32px; border-radius: 50%;
+  cursor: pointer; border: 2px solid white;
+  outline: 1.5px solid var(--border-light); transition: all 0.2s ease;
+  position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.color-dot:hover { transform: scale(1.1); }
+.color-dot.selected { outline: 2.5px solid var(--primary); transform: scale(1.15); box-shadow: 0 0 0 3px var(--primary-light); }
+/* Type 2: Size */
+.size-options { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .size-btn {
   border: 1px solid var(--border-light); background: white;
-  color: var(--text-dark); font-weight: 600; font-size: 0.9rem;
+  color: var(--text-dark); font-weight: 700; font-size: 0.88rem;
   padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer;
-  transition: all 0.2s ease; min-width: 48px; text-align: center;
+  transition: all 0.2s ease; min-width: 44px; text-align: center;
 }
+.size-btn:hover { border-color: var(--primary); color: var(--primary); }
 .size-btn.selected {
   border-color: var(--primary); background: var(--primary-light);
   color: var(--primary); box-shadow: 0 0 0 2px var(--primary);
 }
-.color-options {
-  display: flex; gap: 0.75rem;
+/* Type 3: Material */
+.material-options { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.material-btn {
+  border: 1px solid var(--border-light); background: #f8fafc;
+  color: var(--text-dark); font-weight: 600; font-size: 0.85rem;
+  padding: 0.5rem 1rem; border-radius: 20px; cursor: pointer;
+  transition: all 0.2s ease; display: flex; align-items: center; gap: 0.3rem;
 }
-.color-dot {
-  width: 32px; height: 32px; border-radius: 50%;
-  cursor: pointer; border: 2px solid white;
-  outline: 1px solid var(--border-light); transition: all 0.2s ease;
-  position: relative;
+.material-btn:hover { background: white; border-color: var(--primary); }
+.material-btn.selected {
+  border-color: var(--primary); background: var(--primary-light);
+  color: var(--primary); font-weight: 700;
 }
-.color-dot.selected {
-  outline: 2px solid var(--primary); transform: scale(1.1);
+/* Type 4: Style */
+.style-options { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.style-btn {
+  border: 1px solid var(--border-light); background: white;
+  color: var(--text-dark); font-weight: 600; font-size: 0.85rem;
+  padding: 0.55rem 1.1rem; border-radius: 10px; cursor: pointer;
+  transition: all 0.2s ease;
+}
+.style-btn:hover { border-color: var(--primary); }
+.style-btn.selected {
+  border-color: var(--primary); background: var(--primary-light);
+  color: var(--primary); box-shadow: 0 0 0 2px var(--primary);
+}
+/* Type 5: Custom */
+.custom-options { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.custom-btn {
+  border: 1px solid var(--border-light); background: white;
+  color: var(--text-dark); font-weight: 600; font-size: 0.85rem;
+  padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer;
+  transition: all 0.2s ease;
+}
+.custom-btn.selected {
+  border-color: var(--primary); background: var(--primary-light);
+  color: var(--primary);
 }
 .desktop-actions {
   display: none;
@@ -521,7 +561,6 @@ body {
       <!-- Left Side: Product details -->
       <div class="details-column">
         <div class="product-details">
-          <span class="category-tag">{{brandName}} · {{subCategoryName}}</span>
           <h1 class="product-name" style="margin-bottom: 0.5rem; font-size: 1.6rem; font-weight: 800;">{{name}}</h1>
 
           <div class="reviews-summary">
@@ -540,7 +579,8 @@ body {
             <span class="discount-badge" id="discount-percent">توفير رائع</span>
           </div>
 
-          <!-- Size and Color selectors removed -->
+          <!-- Dynamic Variant Selectors Container -->
+          <div class="selectors-section" id="selectors-section" style="display: none;"></div>
 
           <!-- Desktop Buttons -->
           <div class="desktop-actions">
@@ -613,14 +653,203 @@ body {
       element.classList.add('active');
     }
 
-    function selectSize(btn) {
-      document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-    }
+    function renderVariantSelectors(variants) {
+      const container = document.getElementById('selectors-section');
+      if (!container) return;
+      container.innerHTML = '';
 
-    function selectColor(dot) {
-      document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
-      dot.classList.add('selected');
+      if (!variants || !Array.isArray(variants) || variants.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
+
+      const TYPE_NAMES = {
+        1: 'اللون المتوفر:',
+        2: 'المقاس المتوفر:',
+        3: 'الخامة المتوفرة:',
+        4: 'الستايل المتوفر:',
+        5: 'الخيارات المتاحة:'
+      };
+
+      const groups = {};
+      const targetPid = "{{id}}";
+      variants.forEach(function(v) {
+        if (v.isActive === false) return;
+        if (v.productId && targetPid && targetPid !== "{" + "{id}}" && String(v.productId) !== String(targetPid)) return;
+        const t = (v.type !== undefined && v.type !== null && v.type !== 0) ? v.type : (v.color ? 1 : v.size ? 2 : 5);
+        if (!groups[t]) groups[t] = [];
+        groups[t].push(v);
+      });
+
+      const groupKeys = Object.keys(groups);
+      if (groupKeys.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
+
+      container.style.display = 'flex';
+      container.innerHTML = '';
+
+      groupKeys.forEach(function(typeStr) {
+        const type = parseInt(typeStr);
+        const items = groups[type];
+        if (!items || items.length === 0) return;
+
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'selector-group';
+
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'selector-title';
+        titleDiv.style.display = 'flex';
+        titleDiv.style.alignItems = 'center';
+        titleDiv.style.justifyContent = 'space-between';
+        titleDiv.style.flexWrap = 'wrap';
+        titleDiv.style.gap = '0.4rem';
+
+        function updateTitleWithStock(t, item) {
+          const qty = item.inventory ? (item.inventory.availableQuantity !== undefined ? item.inventory.availableQuantity : item.inventory.quantity) : null;
+          let stockBadge = '';
+          if (qty !== null && qty !== undefined) {
+            const isLow = qty <= 5;
+            const bg = isLow ? '#FEF3C7' : '#E6F4FA';
+            const fg = isLow ? '#D97706' : '#236B93';
+            const border = isLow ? '#F59E0B' : '#BAE6FD';
+            stockBadge = '<span style="font-size:0.78rem; font-weight:700; padding:0.2rem 0.6rem; border-radius:6px; background:' + bg + '; color:' + fg + '; border:1px solid ' + border + ';">المتبقي: ' + qty + ' قطعة</span>';
+          }
+          const nameVal = item.name || item.value || '';
+          titleDiv.innerHTML = '<span>' + (TYPE_NAMES[t] || 'الخيار المتوفر:') + ' <span class="selected-val" style="color:var(--primary, #236B93); font-weight:800; margin-right:0.3rem;">' + nameVal + '</span></span>' + stockBadge;
+        }
+
+        updateTitleWithStock(type, items[0]);
+        groupDiv.appendChild(titleDiv);
+
+        var optionsDiv = document.createElement('div');
+
+      function updateLowStockBanner(v) {
+        let alertBanner = document.getElementById('low-stock-alert-banner');
+        if (!v || !v.inventory) {
+          if (alertBanner) alertBanner.style.display = 'none';
+          return;
+        }
+        const qty = v.inventory.availableQuantity !== undefined ? v.inventory.availableQuantity : v.inventory.quantity;
+        if (qty !== null && qty !== undefined && qty > 0) {
+          if (!alertBanner) {
+            alertBanner = document.createElement('div');
+            alertBanner.id = 'low-stock-alert-banner';
+            alertBanner.style.cssText = 'background: linear-gradient(135deg, rgba(254, 243, 199, 0.95) 0%, rgba(254, 215, 170, 0.95) 100%); border: 1px solid #F59E0B; color: #B45309; border-radius: 12px; padding: 0.65rem 1rem; margin: 0.75rem 0 1rem 0; display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; font-weight: 700; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.15); transition: all 0.3s ease;';
+            const refTarget = document.querySelector('.price-box') || container;
+            if (refTarget && refTarget.parentNode) {
+              refTarget.parentNode.insertBefore(alertBanner, refTarget.nextSibling);
+            } else if (container && container.parentNode) {
+              container.parentNode.insertBefore(alertBanner, container);
+            }
+          }
+          alertBanner.style.display = 'flex';
+          alertBanner.innerHTML = '<span style="font-size:1.25rem;">🔥</span> <span>سارع بالطلب! متبقي <strong style="color:#D97706; font-size:0.95rem;">' + qty + '</strong> قطع فقط في المخزون — اطلب الآن قبل نفاذ الكمية</span>';
+        } else if (alertBanner) {
+          alertBanner.style.display = 'none';
+        }
+      }
+
+      if (type === 1) { // Color
+          optionsDiv.className = 'color-options';
+          items.forEach(function(v, idx) {
+            const dot = document.createElement('div');
+            dot.className = 'color-dot' + (idx === 0 ? ' selected' : '');
+            var val = (v.value || '').trim();
+            var hex = val;
+            if (!hex.startsWith('#') && (hex.length === 6 || hex.length === 3)) {
+              hex = '#' + hex;
+            }
+            dot.style.backgroundColor = hex || '#236B93';
+            dot.title = v.name || v.value;
+            dot.onclick = function() {
+              optionsDiv.querySelectorAll('.color-dot').forEach(function(d) { d.classList.remove('selected'); });
+              dot.classList.add('selected');
+              updateTitleWithStock(type, v);
+              updateLowStockBanner(v);
+              window.selectedColor = v.name || v.value;
+              window.selectedVariantId = v.id;
+            };
+            optionsDiv.appendChild(dot);
+          });
+        } else if (type === 2) { // Size
+          optionsDiv.className = 'size-options';
+          items.forEach(function(v, idx) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'size-btn' + (idx === 0 ? ' selected' : '');
+            btn.textContent = (v.value || v.name).toUpperCase();
+            btn.onclick = function() {
+              optionsDiv.querySelectorAll('.size-btn').forEach(function(b) { b.classList.remove('selected'); });
+              btn.classList.add('selected');
+              updateTitleWithStock(type, v);
+              updateLowStockBanner(v);
+              window.selectedSize = v.name || v.value;
+              window.selectedVariantId = v.id;
+            };
+            optionsDiv.appendChild(btn);
+          });
+        } else if (type === 3) { // Material
+          optionsDiv.className = 'material-options';
+          items.forEach(function(v, idx) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'material-btn' + (idx === 0 ? ' selected' : '');
+            btn.innerHTML = '🧵 ' + (v.name || v.value);
+            btn.onclick = function() {
+              optionsDiv.querySelectorAll('.material-btn').forEach(function(b) { b.classList.remove('selected'); });
+              btn.classList.add('selected');
+              updateTitleWithStock(type, v);
+              updateLowStockBanner(v);
+              window.selectedMaterial = v.name || v.value;
+              window.selectedVariantId = v.id;
+            };
+            optionsDiv.appendChild(btn);
+          });
+        } else if (type === 4) { // Style
+          optionsDiv.className = 'style-options';
+          items.forEach(function(v, idx) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'style-btn' + (idx === 0 ? ' selected' : '');
+            btn.innerHTML = '✨ ' + (v.name || v.value);
+            btn.onclick = function() {
+              optionsDiv.querySelectorAll('.style-btn').forEach(function(b) { b.classList.remove('selected'); });
+              btn.classList.add('selected');
+              updateTitleWithStock(type, v);
+              updateLowStockBanner(v);
+              window.selectedStyle = v.name || v.value;
+              window.selectedVariantId = v.id;
+            };
+            optionsDiv.appendChild(btn);
+          });
+        } else { // Custom (type 5)
+          optionsDiv.className = 'custom-options';
+          items.forEach(function(v, idx) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'custom-btn' + (idx === 0 ? ' selected' : '');
+            btn.textContent = v.name || v.value;
+            btn.onclick = function() {
+              optionsDiv.querySelectorAll('.custom-btn').forEach(function(b) { b.classList.remove('selected'); });
+              btn.classList.add('selected');
+              updateTitleWithStock(type, v);
+              updateLowStockBanner(v);
+              window.selectedCustom = v.name || v.value;
+              window.selectedVariantId = v.id;
+            };
+            optionsDiv.appendChild(btn);
+          });
+        }
+
+        groupDiv.appendChild(optionsDiv);
+        container.appendChild(groupDiv);
+      });
+
+      if (variants.length > 0) {
+        updateLowStockBanner(variants[0]);
+      }
     }
 
     const productId = "{{id}}";
@@ -674,10 +903,25 @@ body {
             const p = prodData.data;
             if (p.name) document.querySelector('.product-name').textContent = p.name;
             if (p.description) document.querySelector('.description-text').textContent = p.description;
+            if (p.variants && p.variants.length > 0) {
+              renderVariantSelectors(p.variants);
+            }
           }
         })
         .catch(err => {
           console.warn("Could not fetch product details dynamically:", err);
+        });
+
+      fetch('/api/ProductVariant?productId=' + productId)
+        .then(function(response) { return response.ok ? response.json() : null; })
+        .then(function(resData) {
+          const vList = resData && resData.success ? resData.data : (Array.isArray(resData) ? resData : []);
+          if (vList && vList.length > 0) {
+            renderVariantSelectors(vList);
+          }
+        })
+        .catch(function(err) {
+          console.warn("Could not fetch variants dynamically:", err);
         });
     }
   </script>

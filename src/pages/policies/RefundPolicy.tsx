@@ -1,9 +1,17 @@
 import React from 'react';
 import { RefreshCw, FileText, CheckCircle, AlertTriangle, Eye } from 'lucide-react';
 import { getStoreSettings } from '../../utils/storeSettings';
+import { useSEO } from '../../hooks/useSEO';
 
 export const RefundPolicy: React.FC = () => {
   const settings = getStoreSettings();
+
+  useSEO({
+    title: 'سياسة الاستبدال والاسترجاع | متجر البطّ',
+    description: 'تعرف على سياسة الاستبدال والاسترجاع في متجر البطّ — معاينة مجانية قبل الاستلام وحماية كاملة لحقوقك كعميل.',
+    url: '/refund-policy',
+  });
+
   return (
     <div style={{ maxWidth: '850px', margin: '3rem auto', padding: '0 1.5rem', direction: 'rtl', textAlign: 'right', lineHeight: 1.8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '2px solid var(--primary)', paddingBottom: '1rem', marginBottom: '2rem' }}>
