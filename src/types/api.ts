@@ -118,6 +118,8 @@ export interface ProductVariant {
   id: number;
   name: string;
   value: string;
+  color?: string;
+  size?: string;
   sku: string | null;
   priceAdjustment: number;
   type: VariantType;
