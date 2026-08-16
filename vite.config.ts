@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          target: env.VITE_API_URL || 'https://backapi.hansalhalkmedacademy.com',
+          target: env.VITE_API_URL || 'https://api.elbatshop.com',
           changeOrigin: true,
           secure: true,
         }

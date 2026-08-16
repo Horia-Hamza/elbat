@@ -3,7 +3,7 @@ import type { ApiResponse } from '../types/api';
 const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 /** Base URL for static images served by the backend */
-export const IMAGES_BASE_URL = import.meta.env.VITE_IMAGES_BASE_URL || 'https://backapi.hansalhalkmedacademy.com';
+export const IMAGES_BASE_URL = import.meta.env.VITE_IMAGES_BASE_URL || 'https://api.elbatshop.com';
 
 /**
  * Central fetch wrapper.
