@@ -1050,7 +1050,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                 product.variants.forEach(v => {
                   if (v.isActive === false) return;
                   if (v.productId && product.id && Number(v.productId) !== Number(product.id)) return;
-                  const t = (v.type !== undefined && v.type !== null && v.type !== 0) ? v.type : (v.color ? 1 : v.size ? 2 : 5);
+                  const t = v.type || (v.color ? 1 : v.size ? 2 : 5);
                   if (!groups[t]) groups[t] = [];
                   groups[t].push(v);
                 });

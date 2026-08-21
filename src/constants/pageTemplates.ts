@@ -856,7 +856,7 @@ body {
 
     const productId = "{{id}}";
     if (productId && productId !== "{" + "{id}}") {
-      const imagesBaseUrl = "https://backapi.hansalhalkmedacademy.com";
+      const imagesBaseUrl = "https://api.elbatshop.com";
 
       fetch('/api/ProductImage/product/' + productId)
         .then(response => {

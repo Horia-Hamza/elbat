@@ -156,7 +156,7 @@ export const AdminVariants: React.FC = () => {
   };
 
   /* ── Delete variant (inventory first, then variant) ── */
-  const handleDelete = async (productId: number, variant: ProductVariant) => {
+  const handleDelete = async ( variant: ProductVariant) => {
     if (!window.confirm(`هل أنت متأكد من حذف المتغير "${variant.name}"؟\nسيتم حذف بيانات المخزون المرتبطة به أيضاً.`)) return;
     try {
       if (variant.inventory?.id) {
@@ -374,7 +374,7 @@ export const AdminVariants: React.FC = () => {
                                   <div style={{ fontSize: '0.68rem', color: '#a5b4fc', background: 'rgba(99,102,241,.12)', display: 'inline-block', padding: '1px 6px', borderRadius: 8, marginTop: 2 }}>{typeLabel}</div>
                                 </div>
                                 <button
-                                  onClick={() => handleDelete(product.id, v)}
+                                  onClick={() => handleDelete( v)}
                                   title="حذف المتغير والمخزون المرتبط به"
                                   style={{ background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.25)', borderRadius: 6, padding: '0.25rem 0.5rem', cursor: 'pointer', color: '#ef4444', flexShrink: 0 }}
                                 >
