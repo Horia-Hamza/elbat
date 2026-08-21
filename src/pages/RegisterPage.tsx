@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authApi } from '../api/auth';
-import { Mail, Lock, User, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Lock, User, Loader2, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
   
@@ -9,6 +9,7 @@ export const RegisterPage: React.FC = () => {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -166,7 +167,7 @@ export const RegisterPage: React.FC = () => {
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.4rem' }}>كلمة المرور *</label>
                 <div style={{ position: 'relative' }}>
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="••••••••"
                     value={password}
@@ -174,7 +175,7 @@ export const RegisterPage: React.FC = () => {
                     dir="ltr"
                     style={{
                       width: '100%',
-                      padding: '0.75rem 1rem 0.75rem 2.5rem',
+                      padding: '0.75rem 2.5rem 0.75rem 2.5rem',
                       border: '1.5px solid var(--border)',
                       borderRadius: 'var(--radius-sm)',
                       outline: 'none',
@@ -183,6 +184,26 @@ export const RegisterPage: React.FC = () => {
                     }}
                   />
                   <Lock size={16} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '0.8rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: 0,
+                    }}
+                    title={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
 

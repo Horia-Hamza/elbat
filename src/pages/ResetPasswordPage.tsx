@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { authApi } from '../api/auth';
-import { Lock, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Lock, Loader2, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 
 export const ResetPasswordPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -13,6 +13,8 @@ export const ResetPasswordPage: React.FC = () => {
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -112,7 +114,7 @@ export const ResetPasswordPage: React.FC = () => {
                 </label>
                 <div style={{ position: 'relative' }}>
                   <input
-                    type="password"
+                    type={showNewPassword ? 'text' : 'password'}
                     required
                     placeholder="••••••••"
                     value={newPassword}
@@ -120,7 +122,7 @@ export const ResetPasswordPage: React.FC = () => {
                     dir="ltr"
                     style={{
                       width: '100%',
-                      padding: '0.75rem 1rem 0.75rem 2.5rem',
+                      padding: '0.75rem 2.5rem 0.75rem 2.5rem',
                       border: '1.5px solid var(--border)',
                       borderRadius: 'var(--radius-sm)',
                       outline: 'none',
@@ -129,6 +131,26 @@ export const ResetPasswordPage: React.FC = () => {
                     }}
                   />
                   <Lock size={16} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '0.8rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: 0,
+                    }}
+                    title={showNewPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                  >
+                    {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
 
@@ -138,7 +160,7 @@ export const ResetPasswordPage: React.FC = () => {
                 </label>
                 <div style={{ position: 'relative' }}>
                   <input
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     required
                     placeholder="••••••••"
                     value={confirmPassword}
@@ -146,7 +168,7 @@ export const ResetPasswordPage: React.FC = () => {
                     dir="ltr"
                     style={{
                       width: '100%',
-                      padding: '0.75rem 1rem 0.75rem 2.5rem',
+                      padding: '0.75rem 2.5rem 0.75rem 2.5rem',
                       border: '1.5px solid var(--border)',
                       borderRadius: 'var(--radius-sm)',
                       outline: 'none',
@@ -155,6 +177,26 @@ export const ResetPasswordPage: React.FC = () => {
                     }}
                   />
                   <Lock size={16} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '0.8rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: 0,
+                    }}
+                    title={showConfirmPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
 

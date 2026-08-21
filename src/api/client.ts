@@ -16,10 +16,10 @@ export async function apiFetch<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = localStorage.getItem('elbat_token');
+  const token = localStorage.getItem('elbat_token') || localStorage.getItem('accessToken') || localStorage.getItem('token');
 
   const headers: Record<string, string> = {
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(token ? { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` } : {}),
     ...(options.headers as Record<string, string> || {}),
   };
 

@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { authApi } from '../api/auth';
-import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { authApi, saveAuthSession } from '../api/auth';
+import { Mail, Lock, Loader2, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const infoMessage = location.state?.message;
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,11 +21,8 @@ export const LoginPage: React.FC = () => {
     try {
       const response = await authApi.login({ email, password });
       
-      // Save token to localStorage (can be inside response.token or response direct)
-      const token = response?.token || response || '';
-      if (token) {
-        localStorage.setItem('elbat_token', token);
-      }
+      // Save tokens & decoded user info to localStorage
+      saveAuthSession(response);
       
       navigate('/');
       window.location.reload(); // Reload to sync cart/wishlist
@@ -56,6 +57,19 @@ export const LoginPage: React.FC = () => {
         
         <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--primary-dark)', marginBottom: '0.5rem' }}>تسجيل الدخول</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '2rem' }}>مرحباً بك مجدداً في متجر البطّ </p>
+
+        {infoMessage && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+            background: '#E8F5E9', border: '1px solid #A5D6A7',
+            borderRadius: 'var(--radius-sm)', padding: '0.7rem 1rem',
+            marginBottom: '1.5rem', color: '#2E7D32', fontSize: '0.85rem',
+            textAlign: 'right'
+          }}>
+            <CheckCircle size={16} />
+            <span>{infoMessage}</span>
+          </div>
+        )}
 
         {error && (
           <div style={{
@@ -103,7 +117,7 @@ export const LoginPage: React.FC = () => {
             </label>
             <div style={{ position: 'relative' }}>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 placeholder="••••••••"
                 value={password}
@@ -111,7 +125,7 @@ export const LoginPage: React.FC = () => {
                 dir="ltr"
                 style={{
                   width: '100%',
-                  padding: '0.75rem 1rem 0.75rem 2.5rem',
+                  padding: '0.75rem 2.5rem 0.75rem 2.5rem',
                   border: '1.5px solid var(--border)',
                   borderRadius: 'var(--radius-sm)',
                   outline: 'none',
@@ -120,6 +134,26 @@ export const LoginPage: React.FC = () => {
                 }}
               />
               <Lock size={16} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '0.8rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: 0,
+                }}
+                title={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
             <div style={{ textAlign: 'left', marginTop: '0.4rem' }}>
               <Link to="/forgot-password" style={{ color: 'var(--primary)', fontSize: '0.78rem', textDecoration: 'none', fontWeight: 600 }}>

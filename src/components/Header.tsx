@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Heart, ShoppingBag, User } from 'lucide-react';
 import type { SubCategory } from '../types/api';
 
@@ -27,6 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeSubCategory = 'all',
   onSubCategorySelect
 }) => {
+  const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
           onSearchChange('');
           if (showOnlyFavs) onToggleFavs();
           if (onSubCategorySelect) onSubCategorySelect('all');
+          navigate('/');
         }}>
           <img src="/logo.png" alt="شعار متجر البط" className="logo-img" />
         </div>
@@ -102,7 +105,7 @@ export const Header: React.FC<HeaderProps> = ({
             {cartCount > 0 && <span className="badge-count">{cartCount}</span>}
           </button>
 
-          <button className="action-btn" title="حسابي">
+          <button className="action-btn" onClick={() => navigate('/login')} title="تسجيل الدخول / حسابي">
             <User size={22} />
           </button>
         </div>

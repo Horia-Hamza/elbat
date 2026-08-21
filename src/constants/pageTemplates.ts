@@ -731,8 +731,10 @@ body {
           if (alertBanner) alertBanner.style.display = 'none';
           return;
         }
-        const qty = v.inventory.availableQuantity !== undefined ? v.inventory.availableQuantity : v.inventory.quantity;
-        if (qty !== null && qty !== undefined && qty > 0) {
+        const inv = v.inventory;
+        const isLow = inv.isLowStock === true || (inv.availableQuantity !== undefined && inv.lowStockThreshold !== undefined && inv.availableQuantity <= inv.lowStockThreshold && inv.availableQuantity > 0);
+        const qty = inv.availableQuantity !== undefined ? inv.availableQuantity : inv.quantity;
+        if (isLow && qty !== null && qty !== undefined && qty > 0) {
           if (!alertBanner) {
             alertBanner = document.createElement('div');
             alertBanner.id = 'low-stock-alert-banner';

@@ -572,6 +572,7 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/confirm-email" element={<ConfirmEmailPage />} />
+              <Route path="/confirm-email/*" element={<ConfirmEmailPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/change-password" element={<ChangePasswordPage />} />

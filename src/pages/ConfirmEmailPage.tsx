@@ -1,38 +1,70 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { authApi } from '../api/auth';
+import { useSearchParams, useParams, useNavigate, Link } from 'react-router-dom';
+import { authApi, saveAuthSession } from '../api/auth';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
 export const ConfirmEmailPage: React.FC = () => {
+  const { '*': wildcardCode, code: paramCode } = useParams<{ '*': string; code?: string }>();
   const [searchParams] = useSearchParams();
-  const code = searchParams.get('code') || searchParams.get('token') || '';
+  const navigate = useNavigate();
+
+  // Extract code from query params (?code=... or ?token=...) or path params (/confirm-email/...)
+  const queryCode = searchParams.get('code') || searchParams.get('token') || '';
+  const pathCode = paramCode || wildcardCode || '';
+  const rawCode = queryCode || pathCode || window.location.pathname.replace(/^\/confirm-email\/?/, '').replace(/^\//, '');
+  const code = rawCode.trim();
 
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState<boolean | null>(null);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
+    let isMounted = true;
+
     const handleConfirm = async () => {
       if (!code) {
-        setLoading(false);
-        setSuccess(false);
-        setMessage('رمز التأكيد غير صالح أو مفقود في الرابط.');
+        if (isMounted) {
+          setLoading(false);
+          setSuccess(false);
+          setMessage('رمز التأكيد غير صالح أو مفقود في الرابط.');
+        }
         return;
       }
+
       try {
-        await authApi.confirmEmail(code);
-        setSuccess(true);
-        setMessage('تم تأكيد البريد الإلكتروني بنجاح! يمكنك الآن تسجيل الدخول.');
+        const response = await authApi.confirmEmail(code);
+        
+        // Save session tokens & user info if returned in response
+        if (response) {
+          saveAuthSession(response);
+        }
+
+        if (isMounted) {
+          setSuccess(true);
+          setMessage('تم تأكيد البريد الإلكتروني بنجاح!');
+          // Redirect to login page
+          setTimeout(() => {
+            navigate('/login', { state: { message: 'تم تأكيد البريد الإلكتروني بنجاح! يرجى تسجيل الدخول.' } });
+          }, 1500);
+        }
       } catch (err: any) {
-        setSuccess(false);
-        setMessage(err.message || 'فشل تأكيد البريد الإلكتروني. الرمز ربما انتهت صلاحيته.');
+        if (isMounted) {
+          setSuccess(false);
+          setMessage(err.message || 'فشل تأكيد البريد الإلكتروني. الرمز ربما انتهت صلاحيته أو غير صحيح.');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     handleConfirm();
-  }, [code]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [code, navigate]);
 
   return (
     <div style={{
@@ -69,10 +101,10 @@ export const ConfirmEmailPage: React.FC = () => {
                 <CheckCircle size={56} style={{ color: '#2E7D32' }} />
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#2E7D32', margin: 0 }}>تم التأكيد بنجاح</h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', lineHeight: 1.6, margin: 0 }}>
-                  {message}
+                  {message} جاري توجيهك لصفحة تسجيل الدخول...
                 </p>
                 <Link to="/login" className="btn-primary" style={{ textDecoration: 'none', padding: '0.8rem 2rem', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 700, marginTop: '0.8rem' }}>
-                  تسجيل الدخول الآن
+                  الذهاب لتسجيل الدخول
                 </Link>
               </>
             ) : (

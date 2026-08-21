@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Star, Plus, Minus, ShoppingCart, ArrowRight, ChevronLeft, ChevronRight, Loader2, Heart } from 'lucide-react';
 import type { ApiProduct } from '../types/api';
-import { productsApi } from '../api/products';
+import { productsApi, productImagesApi } from '../api/products';
 import { productVariantsApi } from '../api/productVariants';
 import { IMAGES_BASE_URL } from '../api/client';
 import { ProductCard } from '../components/ProductCard';
@@ -103,12 +103,34 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     }
   };
 
-  const productImages = product?.images && product.images.length > 0
-    ? product.images.map(img => {
-      const u = img.imageUrl || img.url || '';
+  const productImages = useMemo(() => {
+    if (!product) return [];
+    const list: string[] = [];
+
+    const resolve = (u: string) => {
+      if (!u) return '';
       return u.startsWith('http') ? u : `${IMAGES_BASE_URL}${u}`;
-    })
-    : [];
+    };
+
+    if (product.mainImageUrl) {
+      const mainFull = resolve(product.mainImageUrl);
+      if (mainFull) list.push(mainFull);
+    }
+
+    if (product.images && product.images.length > 0) {
+      product.images.forEach(img => {
+        const u = img.imageUrl || img.url || '';
+        if (u) {
+          const full = resolve(u);
+          if (full && !list.includes(full)) {
+            list.push(full);
+          }
+        }
+      });
+    }
+
+    return list;
+  }, [product]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -127,13 +149,22 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
           setQuantity(1);
           setError(null);
 
-          // Fetch variants dynamically to guarantee full variants list is populated (e.g. Color variants for Product #33)
+          // Fetch additional product images dynamically
+          productImagesApi.getImagesByProductId(Number(id))
+            .then((imgs) => {
+              if (imgs && imgs.length > 0) {
+                setProduct(prev => prev ? { ...prev, images: imgs } : prev);
+              }
+            })
+            .catch(err => console.warn('Could not fetch product images:', err));
+
+          // Fetch variants dynamically to guarantee full variants list is populated
           productVariantsApi.getByProduct(Number(id))
             .then((vars) => {
               if (vars && vars.length > 0) {
                 setProduct(prev => prev ? { ...prev, variants: vars } : prev);
-                const firstColor = vars.find(v => v.type === 1 || v.color)?.name || vars.find(v => v.type === 1 || v.color)?.value || '';
-                const firstSize = vars.find(v => v.type === 2 || v.size)?.value || vars.find(v => v.type === 2 || v.size)?.name || '';
+                const firstColor = vars.find(v => v.type === 1 || (v as any).color)?.name || vars.find(v => v.type === 1 || (v as any).color)?.value || '';
+                const firstSize = vars.find(v => v.type === 2 || (v as any).size)?.value || vars.find(v => v.type === 2 || (v as any).size)?.name || '';
                 if (firstColor) setSelectedColor(firstColor);
                 if (firstSize) setSelectedSize(firstSize);
               }
@@ -320,8 +351,10 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
               if (alertBanner) alertBanner.style.display = 'none';
               return;
             }
-            const qty = v.inventory.availableQuantity !== undefined ? v.inventory.availableQuantity : v.inventory.quantity;
-            if (qty !== null && qty !== undefined && qty > 0) {
+            const inv = v.inventory;
+            const isLow = inv.isLowStock === true || (inv.availableQuantity !== undefined && inv.lowStockThreshold !== undefined && inv.availableQuantity <= inv.lowStockThreshold && inv.availableQuantity > 0);
+            const qty = inv.availableQuantity !== undefined ? inv.availableQuantity : inv.quantity;
+            if (isLow && qty !== null && qty !== undefined && qty > 0) {
               if (!alertBanner) {
                 alertBanner = document.createElement('div');
                 alertBanner.id = 'low-stock-alert-banner';
@@ -545,6 +578,98 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       }
     `;
 
+    const imagesJson = JSON.stringify(product.images || []);
+    const mainImgUrlStr = product.mainImageUrl
+      ? (product.mainImageUrl.startsWith('http') ? product.mainImageUrl : `${IMAGES_BASE_URL}${product.mainImageUrl}`)
+      : '';
+
+    const galleryScriptToInject = `
+      try {
+        const initialImages = ${imagesJson};
+        const mainImageResolved = "${mainImgUrlStr}";
+        const currentPid = "${product.id}";
+        const baseImgUrl = "${IMAGES_BASE_URL}";
+
+        function setupProductGallery(imgList) {
+          const allImgs = [];
+          if (mainImageResolved) {
+            allImgs.push(mainImageResolved);
+          }
+          if (Array.isArray(imgList)) {
+            imgList.forEach(img => {
+              const u = img.imageUrl || img.url || '';
+              if (u) {
+                const full = u.startsWith('http') ? u : baseImgUrl + u;
+                if (!allImgs.includes(full)) {
+                  allImgs.push(full);
+                }
+              }
+            });
+          }
+
+          if (allImgs.length <= 1) return;
+
+          let thumbsContainer = document.getElementById('thumbs-list') || document.querySelector('.thumbs-list') || document.querySelector('.product-thumbnails') || document.querySelector('.pdp-thumbnails') || document.querySelector('.thumbs');
+          let mainImgEl = document.getElementById('main-image') || document.querySelector('.main-image-container img') || document.querySelector('.img-main img') || document.querySelector('.hero-image img') || document.querySelector('img[src*="uploads"]');
+
+          if (!thumbsContainer && mainImgEl && mainImgEl.parentNode) {
+            thumbsContainer = document.createElement('div');
+            thumbsContainer.id = 'dynamic-thumbs-list';
+            thumbsContainer.style.cssText = 'display: flex; gap: 0.6rem; overflow-x: auto; padding: 0.6rem 0; margin-top: 0.75rem; width: 100%; justify-content: center; align-items: center; border-radius: 8px;';
+            mainImgEl.parentNode.insertBefore(thumbsContainer, mainImgEl.nextSibling);
+          }
+
+          if (thumbsContainer) {
+            thumbsContainer.innerHTML = '';
+            thumbsContainer.style.display = 'flex';
+            thumbsContainer.style.gap = '0.6rem';
+            thumbsContainer.style.overflowX = 'auto';
+            thumbsContainer.style.padding = '0.5rem 0';
+            thumbsContainer.style.justifyContent = 'center';
+
+            allImgs.forEach((url, idx) => {
+              const thumb = document.createElement('div');
+              thumb.className = 'thumb' + (idx === 0 ? ' active' : '');
+              thumb.style.cssText = 'width: 64px; height: 64px; border-radius: 10px; border: ' + (idx === 0 ? '3px solid #236B93' : '1px solid #E2E8F0') + '; cursor: pointer; flex-shrink: 0; overflow: hidden; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.06); transition: all 0.2s ease;';
+
+              const img = document.createElement('img');
+              img.src = url;
+              img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+              img.onerror = function() { this.src = '/logo.png'; };
+
+              thumb.appendChild(img);
+              thumb.onclick = function() {
+                if (mainImgEl) mainImgEl.src = url;
+                thumbsContainer.querySelectorAll('div').forEach(t => {
+                  t.style.border = '1px solid #E2E8F0';
+                  t.classList.remove('active');
+                });
+                thumb.style.border = '3px solid #236B93';
+                thumb.classList.add('active');
+              };
+              thumbsContainer.appendChild(thumb);
+            });
+          }
+        }
+
+        setupProductGallery(initialImages);
+
+        if (currentPid) {
+          fetch('/api/ProductImage/product/' + currentPid)
+            .then(function(res) { return res.ok ? res.json() : null; })
+            .then(function(resData) {
+              const imgList = resData && resData.success ? resData.data : (Array.isArray(resData) ? resData : []);
+              if (imgList && imgList.length > 0) {
+                setupProductGallery(imgList);
+              }
+            })
+            .catch(function(err) { console.warn("Could not fetch additional images dynamically:", err); });
+        }
+      } catch(err) {
+        console.warn("Could not process gallery image response:", err);
+      }
+    `;
+
     // Inject script and style to bridge interactive buttons and hide selectors
     const scriptToInject = `
       <style>
@@ -580,6 +705,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       <script>
         window.addEventListener('DOMContentLoaded', () => {
           ${variantScriptToInject}
+          ${galleryScriptToInject}
           ${!product.inStock ? `
             // Inject an out-of-stock banner at the top of the body
             const banner = document.createElement('div');
@@ -867,15 +993,21 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                 )}
               </div>
 
-              {/* تنبيه انخفاض المخزون (Low Stock Alert based on clicked variant) */}
+              {/* تنبيه انخفاض المخزون (Low Stock Alert displayed ONLY when isLowStock: true) */}
               {(() => {
                 const clickedVariant = product.variants?.find(v => v.id === selectedVariantId);
                 const targetVar = clickedVariant
-                  || product.variants?.find(v => v.inventory?.isLowStock)
-                  || product.variants?.find(v => v.inventory && (v.inventory.availableQuantity > 0 || v.inventory.quantity > 0));
+                  || product.variants?.find(v => v.inventory?.isLowStock === true)
+                  || product.variants?.find(v => v.inventory?.isLowStock);
                 
-                const qty = targetVar?.inventory?.availableQuantity ?? targetVar?.inventory?.quantity;
-                if (!targetVar || qty === undefined || qty === null || qty <= 0) return null;
+                if (!targetVar || !targetVar.inventory) return null;
+                const inv = targetVar.inventory;
+
+                const isLow = inv.isLowStock === true || (inv.availableQuantity !== undefined && inv.lowStockThreshold !== undefined && inv.availableQuantity <= inv.lowStockThreshold && inv.availableQuantity > 0);
+                if (!isLow) return null;
+
+                const qty = inv.availableQuantity ?? inv.quantity;
+                if (qty === undefined || qty === null || qty <= 0) return null;
 
                 return (
                   <div style={{

@@ -806,18 +806,14 @@ a {
   }
 
   .showcase-stack {
-    display: flex !important;
-    flex-direction: row !important;
-    justify-content: flex-start !important;
-    align-items: flex-start !important;
-    gap: 0.75rem !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.5rem !important;
     width: 100% !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto;
-    padding: 0.5rem 1.25rem !important;
+    padding: 0.5rem 1rem !important;
+    box-sizing: border-box !important;
+    overflow-x: visible !important;
     scrollbar-width: none !important;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x mandatory;
   }
 
   .showcase-stack::-webkit-scrollbar {
@@ -833,16 +829,15 @@ a {
     -webkit-backdrop-filter: blur(8px) !important;
     border: 1px solid rgba(255, 255, 255, 0.7) !important;
     box-shadow: 0 4px 16px rgba(35, 107, 147, 0.12) !important;
-    border-radius: 16px !important;
+    border-radius: 14px !important;
     padding: 0 !important;
-    width: 120px !important;
-    min-width: 120px !important;
+    width: 100% !important;
+    min-width: 0 !important;
     overflow: hidden !important;
-    flex-shrink: 0 !important;
+    flex-shrink: 1 !important;
     transform: none !important;
     opacity: 1 !important;
     transition: transform 0.2s ease, box-shadow 0.2s ease !important;
-    scroll-snap-align: start;
   }
 
   .showcase-card:hover {
@@ -859,7 +854,7 @@ a {
 
   .showcase-card-visual {
     width: 100% !important;
-    height: 140px !important;
+    height: 100px !important;
     border-radius: 0 !important;
     overflow: hidden !important;
     border: none !important;
@@ -881,13 +876,14 @@ a {
   }
 
   .showcase-card-details {
-    padding: 0.5rem 0.6rem 0.6rem !important;
+    padding: 0.4rem 0.35rem 0.5rem !important;
     text-align: center !important;
     width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .showcase-card-name {
-    font-size: 0.72rem !important;
+    font-size: 0.7rem !important;
     font-weight: 700 !important;
     color: var(--text-main) !important;
     margin: 0 0 2px 0 !important;
@@ -895,14 +891,16 @@ a {
     -webkit-line-clamp: 2 !important;
     -webkit-box-orient: vertical !important;
     overflow: hidden !important;
-    height: 2.1em !important;
+    height: 2.2em !important;
     line-height: 1.1 !important;
     text-align: center !important;
+    word-break: break-word !important;
   }
 
   .showcase-card-action {
     display: flex !important;
     justify-content: center !important;
+    align-items: center !important;
     margin-top: 2px !important;
   }
 
@@ -910,6 +908,7 @@ a {
     font-size: 0.75rem !important;
     color: var(--primary) !important;
     font-weight: 800 !important;
+    white-space: nowrap !important;
   }
 }
 
