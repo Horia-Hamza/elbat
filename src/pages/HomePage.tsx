@@ -62,7 +62,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   
   const { products, loading: productsLoading } = useProducts({
     pageNumber: 1,
-    pageSize: 100,
+    pageSize: 24,
     categoryId: activeCategory !== 'all' ? Number(activeCategory) : null,
     subCategoryId: activeSubCategory !== 'all' ? Number(activeSubCategory) : null,
   });

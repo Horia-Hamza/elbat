@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom';
 import { Header } from './components/Header';
 import { CartDrawer } from './components/CartDrawer';
@@ -10,20 +10,24 @@ import type { ApiProduct } from './types/api';
 import { HomePage } from './pages/HomePage';
 import { ProductDetailsPage } from './pages/ProductDetailsPage';
 import { PaymentSuccessPage } from './pages/PaymentSuccessPage';
-import { LoginPage } from './pages/LoginPage';
-import { RegisterPage } from './pages/RegisterPage';
-import { ConfirmEmailPage } from './pages/ConfirmEmailPage';
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
-import { ResetPasswordPage } from './pages/ResetPasswordPage';
-import { ChangePasswordPage } from './pages/ChangePasswordPage';
-import BundleCheckoutPage from './pages/checkout/BundleCheckoutPage';
 import { SubCategoryPage } from './pages/SubCategoryPage';
 
-// Policy pages
-import { PrivacyPolicy } from './pages/policies/PrivacyPolicy';
-import { RefundPolicy } from './pages/policies/RefundPolicy';
-import { TermsConditions } from './pages/policies/TermsConditions';
-import { ShippingPolicy } from './pages/policies/ShippingPolicy';
+// Lazy loaded Auth pages
+const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('./pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
+const ConfirmEmailPage = lazy(() => import('./pages/ConfirmEmailPage').then(m => ({ default: m.ConfirmEmailPage })));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
+const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage').then(m => ({ default: m.ChangePasswordPage })));
+
+// Lazy loaded Bundle Checkout page
+const BundleCheckoutPage = lazy(() => import('./pages/checkout/BundleCheckoutPage'));
+
+// Lazy loaded Policy pages
+const PrivacyPolicy = lazy(() => import('./pages/policies/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })));
+const RefundPolicy = lazy(() => import('./pages/policies/RefundPolicy').then(m => ({ default: m.RefundPolicy })));
+const TermsConditions = lazy(() => import('./pages/policies/TermsConditions').then(m => ({ default: m.TermsConditions })));
+const ShippingPolicy = lazy(() => import('./pages/policies/ShippingPolicy').then(m => ({ default: m.ShippingPolicy })));
 
 // Components
 import { WhatsAppButton } from './components/WhatsAppButton';
@@ -34,19 +38,25 @@ import { initTracking, trackPageView, trackAddToCart, trackInitiateCheckout } fr
 // Store settings
 import { getStoreSettings } from './utils/storeSettings';
 
-// Admin imports
+// Admin layout & Lazy loaded Admin pages
 import { AdminLayout } from './layouts/AdminLayout';
-import { AdminDashboard } from './pages/admin/AdminDashboard';
-import { AdminProducts } from './pages/admin/AdminProducts';
-import { AdminVariants } from './pages/admin/AdminVariants';
-import { AdminCategories } from './pages/admin/AdminCategories';
-import { AdminOrders } from './pages/admin/AdminOrders';
-import { AdminBrands } from './pages/admin/AdminBrands';
-import { AdminSubCategories } from './pages/admin/AdminSubCategories';
-import { AdminPageDesigns } from './pages/admin/AdminPageDesigns';
-import { AdminShippingZones } from './pages/admin/AdminShippingZones';
-import { AdminShippingAddresses } from './pages/admin/AdminShippingAddresses';
-import { AdminPayments } from './pages/admin/AdminPayments';
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const AdminProducts = lazy(() => import('./pages/admin/AdminProducts').then(m => ({ default: m.AdminProducts })));
+const AdminVariants = lazy(() => import('./pages/admin/AdminVariants').then(m => ({ default: m.AdminVariants })));
+const AdminCategories = lazy(() => import('./pages/admin/AdminCategories').then(m => ({ default: m.AdminCategories })));
+const AdminOrders = lazy(() => import('./pages/admin/AdminOrders').then(m => ({ default: m.AdminOrders })));
+const AdminBrands = lazy(() => import('./pages/admin/AdminBrands').then(m => ({ default: m.AdminBrands })));
+const AdminSubCategories = lazy(() => import('./pages/admin/AdminSubCategories').then(m => ({ default: m.AdminSubCategories })));
+const AdminPageDesigns = lazy(() => import('./pages/admin/AdminPageDesigns').then(m => ({ default: m.AdminPageDesigns })));
+const AdminShippingZones = lazy(() => import('./pages/admin/AdminShippingZones').then(m => ({ default: m.AdminShippingZones })));
+const AdminShippingAddresses = lazy(() => import('./pages/admin/AdminShippingAddresses').then(m => ({ default: m.AdminShippingAddresses })));
+const AdminPayments = lazy(() => import('./pages/admin/AdminPayments').then(m => ({ default: m.AdminPayments })));
+
+const LoadingFallback = () => (
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+    <div style={{ width: '36px', height: '36px', border: '3px solid #E2E8F0', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+  </div>
+);
 
 import { cartApi } from './api/cart';
 import { wishlistApi } from './api/wishlist';
@@ -479,7 +489,8 @@ function App() {
   const cartTotalCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <Routes>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
       {/* ====================================================
           ADMIN DASHBOARD ROUTES 
           ==================================================== */}
@@ -779,6 +790,7 @@ function App() {
         </div>
       } />
     </Routes>
+    </Suspense>
   );
 }
 

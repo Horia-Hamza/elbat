@@ -28,7 +28,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="stat-val">1,284</div>
           </div>
         </div>
-        
+
         <div className="admin-card stat-card">
           <div className="stat-icon green">
             <TrendingUp size={24} />
@@ -38,7 +38,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="stat-val">48,390 ج.م</div>
           </div>
         </div>
-        
+
         <div className="admin-card stat-card">
           <div className="stat-icon orange">
             <Package size={24} />
@@ -48,7 +48,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="stat-val">342</div>
           </div>
         </div>
-        
+
         <div className="admin-card stat-card">
           <div className="stat-icon red">
             <Users size={24} />
@@ -61,7 +61,7 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
-        
+
         {/* Contact Info & Social Settings Card */}
         <div className="admin-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--admin-border)', paddingBottom: '0.75rem' }}>
@@ -164,7 +164,7 @@ export const AdminDashboard: React.FC = () => {
               </label>
               <input
                 type="text"
-                placeholder="مثال: 2538832046546163"
+                placeholder="مثال: 1084111960734732"
                 value={settings.fbPixelId}
                 onChange={(e) => handleInputChange('fbPixelId', e.target.value)}
                 style={inputStyle}
@@ -221,7 +221,7 @@ export const AdminDashboard: React.FC = () => {
               <HelpCircle size={20} style={{ color: '#ff9800' }} />
               <h3 style={{ color: 'var(--admin-text-main)', margin: 0 }}>مساعد لوحة التحكم</h3>
             </div>
-            
+
             <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-muted)', display: 'flex', flexDirection: 'column', gap: '0.8rem', lineHeight: '1.5' }}>
               <div>
                 <strong style={{ color: 'var(--admin-text-main)', display: 'block', marginBottom: '0.15rem' }}>📌 ربط وحفظ البيانات:</strong>

@@ -27,7 +27,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   tiktok: 'https://www.tiktok.com/@elbat1327?lang=en',
   instagram: 'https://www.instagram.com/elbat_shop/',
   phone: '+20 10 65613067',
-  fbPixelId: '2538832046546163',
+  fbPixelId: '1084111960734732',
   tiktokPixelId: '',
 };
 
