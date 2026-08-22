@@ -164,7 +164,7 @@ export const AdminDashboard: React.FC = () => {
               </label>
               <input
                 type="text"
-                placeholder="مثال: 1404279981755342"
+                placeholder="مثال: 2538832046546163"
                 value={settings.fbPixelId}
                 onChange={(e) => handleInputChange('fbPixelId', e.target.value)}
                 style={inputStyle}
