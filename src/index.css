@@ -133,8 +133,11 @@ a {
   filter: drop-shadow(0 4px 6px rgba(35, 107, 147, 0.1));
   animation: floatDuckUp 8s infinite ease-in;
   pointer-events: all;
-  /* each duck captures mouse events */
+  /* each duck captures mouse/touch events */
   cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 @keyframes floatDuckUp {

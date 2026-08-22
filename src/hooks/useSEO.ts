@@ -12,7 +12,7 @@ interface SEOProps {
   noindex?: boolean;
 }
 
-const SITE_NAME = 'متجر البطّ';
+const SITE_NAME = 'متجر البط';
 const BASE_URL = 'https://www.elbat.store';
 const DEFAULT_IMAGE = `${BASE_URL}/logo.png`;
 
@@ -56,7 +56,7 @@ function removeJsonLd() {
 
 export function useSEO({
   title,
-  description = 'متجر البطّ — وجهتك الأولى لأفضل المنتجات المبتكرة للمنزل والعناية الشخصية. شحن سريع لجميع أنحاء مصر.',
+  description = 'متجر البط — وجهتك الأولى لأفضل المنتجات المبتكرة للمنزل والعناية الشخصية. شحن سريع لجميع أنحاء مصر.',
   image = DEFAULT_IMAGE,
   url,
   type = 'website',

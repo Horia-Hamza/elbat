@@ -100,7 +100,7 @@ function App() {
     return saved ? JSON.parse(saved) : [];
   });
   const [buyNowItem, setBuyNowItem] = useState<CartItem | null>(null);
-  
+
   const [favorites, setFavorites] = useState<string[]>(() => {
     const saved = localStorage.getItem('elbat_favs');
     return saved ? JSON.parse(saved) : [];
@@ -117,9 +117,13 @@ function App() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const location = useLocation();
 
-  // Initialize Meta and TikTok Pixels
+  // Initialize Meta and TikTok Pixels (deferred for maximum page speed)
   useEffect(() => {
-    initTracking();
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(() => initTracking());
+    } else {
+      setTimeout(() => initTracking(), 1000);
+    }
   }, []);
 
   // Track page views and sync active subcategory highlight on route changes
@@ -264,12 +268,12 @@ function App() {
     trackAddToCart({ id: product.id, name: product.name, price: priceVal }, quantity);
 
     const itemId = `${product.id}_${color || 'none'}_${size || 'none'}`;
-    
+
     // Resolve variantId
     let variantId = 0;
     if (product.variants && product.variants.length > 0) {
-      const matched = product.variants.find(v => 
-        (!color || v.color === color) && 
+      const matched = product.variants.find(v =>
+        (!color || v.color === color) &&
         (!size || v.size === size)
       );
       if (matched) {
@@ -292,8 +296,8 @@ function App() {
       localCartArray = [];
     }
 
-    const existingIndex = localCartArray.findIndex(item => 
-      item.productId === product.id && 
+    const existingIndex = localCartArray.findIndex(item =>
+      item.productId === product.id &&
       item.variantId === variantId
     );
 
@@ -325,7 +329,7 @@ function App() {
     setCartItems((prevItems) => {
       const isExisting = prevItems.some((item) => item.id === itemId);
       if (isExisting) {
-        return prevItems.map((item) => 
+        return prevItems.map((item) =>
           item.id === itemId ? { ...item, quantity: item.quantity + quantity } : item
         );
       }
@@ -353,8 +357,8 @@ function App() {
       if (item) {
         let variantId = 0;
         if (item.product.variants && item.product.variants.length > 0) {
-          const matched = item.product.variants.find(v => 
-            (!item.color || v.color === item.color) && 
+          const matched = item.product.variants.find(v =>
+            (!item.color || v.color === item.color) &&
             (!item.size || v.size === item.size)
           );
           if (matched) variantId = matched.id;
@@ -387,8 +391,8 @@ function App() {
       try {
         let variantId = 0;
         if (item.product.variants && item.product.variants.length > 0) {
-          const matched = item.product.variants.find(v => 
-            (!item.color || v.color === item.color) && 
+          const matched = item.product.variants.find(v =>
+            (!item.color || v.color === item.color) &&
             (!item.size || v.size === item.size)
           );
           if (matched) variantId = matched.id;
@@ -417,7 +421,7 @@ function App() {
       setFavorites((prev) => prev.filter((favId) => favId !== id));
     } else {
       showToast(`تمت الإضافة إلى المفضلة!`);
-      
+
       // Add to offline wishlist queue in localStorage under the key 'wishlist'
       try {
         const currentUserId = localStorage.getItem('elbat_token') ? getUserIdFromToken() : 'string';
@@ -429,7 +433,7 @@ function App() {
         if (!Array.isArray(localWishlistArray)) {
           localWishlistArray = [];
         }
-        
+
         // Avoid duplicate entries in the queue
         const exists = localWishlistArray.some(item => item.productId === Number(id));
         if (!exists) {
@@ -491,305 +495,305 @@ function App() {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
-      {/* ====================================================
+        {/* ====================================================
           ADMIN DASHBOARD ROUTES 
           ==================================================== */}
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<AdminDashboard />} />
-        <Route path="products" element={<AdminProducts />} />
-        <Route path="variants" element={<AdminVariants />} />
-        <Route path="page-designs" element={<AdminPageDesigns />} />
-        <Route path="page-designs/:productId" element={<AdminPageDesigns />} />
-        <Route path="categories" element={<AdminCategories />} />
-        <Route path="subcategories" element={<AdminSubCategories />} />
-        <Route path="brands" element={<AdminBrands />} />
-        <Route path="orders" element={<AdminOrders />} />
-        <Route path="payments" element={<AdminPayments />} />
-        <Route path="shipping" element={<AdminShippingZones />} />
-        <Route path="addresses" element={<AdminShippingAddresses />} />
-      </Route>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="products" element={<AdminProducts />} />
+          <Route path="variants" element={<AdminVariants />} />
+          <Route path="page-designs" element={<AdminPageDesigns />} />
+          <Route path="page-designs/:productId" element={<AdminPageDesigns />} />
+          <Route path="categories" element={<AdminCategories />} />
+          <Route path="subcategories" element={<AdminSubCategories />} />
+          <Route path="brands" element={<AdminBrands />} />
+          <Route path="orders" element={<AdminOrders />} />
+          <Route path="payments" element={<AdminPayments />} />
+          <Route path="shipping" element={<AdminShippingZones />} />
+          <Route path="addresses" element={<AdminShippingAddresses />} />
+        </Route>
 
-      {/* ====================================================
+        {/* ====================================================
           PAYMENT CALLBACK — standalone, no header/footer
           ==================================================== */}
-      <Route path="/payment/result" element={<PaymentSuccessPage />} />
-      <Route path="/payment/callback" element={<PaymentSuccessPage />} />
+        <Route path="/payment/result" element={<PaymentSuccessPage />} />
+        <Route path="/payment/callback" element={<PaymentSuccessPage />} />
 
-      {/* ====================================================
+        {/* ====================================================
           CONSUMER STOREFRONT ROUTES 
           ==================================================== */}
-      <Route path="/*" element={
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-          <Header
-            cartCount={cartTotalCount}
-            favCount={favorites.length}
-            searchQuery={searchQuery}
-            onSearchChange={(val) => {
-              setSearchQuery(val);
-              scrollToCatalog();
-            }}
-            onCartOpen={() => setIsCartOpen(true)}
-            showOnlyFavs={showOnlyFavs}
-            onToggleFavs={() => {
-              setShowOnlyFavs(!showOnlyFavs);
-              scrollToCatalog();
-            }}
-            subCategories={subCategories}
-            activeSubCategory={activeSubCategory}
-            onSubCategorySelect={(key) => {
-              setActiveSubCategory(key);
-              setActiveCategory('all');
-              setShowOnlyFavs(false);
-              if (key === 'all') {
-                navigate('/');
-              } else {
-                navigate(`/subcategory/${key}`);
-              }
-            }}
-          />
+        <Route path="/*" element={
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <Header
+              cartCount={cartTotalCount}
+              favCount={favorites.length}
+              searchQuery={searchQuery}
+              onSearchChange={(val) => {
+                setSearchQuery(val);
+                scrollToCatalog();
+              }}
+              onCartOpen={() => setIsCartOpen(true)}
+              showOnlyFavs={showOnlyFavs}
+              onToggleFavs={() => {
+                setShowOnlyFavs(!showOnlyFavs);
+                scrollToCatalog();
+              }}
+              subCategories={subCategories}
+              activeSubCategory={activeSubCategory}
+              onSubCategorySelect={(key) => {
+                setActiveSubCategory(key);
+                setActiveCategory('all');
+                setShowOnlyFavs(false);
+                if (key === 'all') {
+                  navigate('/');
+                } else {
+                  navigate(`/subcategory/${key}`);
+                }
+              }}
+            />
 
-          <div style={{ flexGrow: 1 }}>
-            <Routes>
-              <Route 
-                path="/" 
-                element={
-                  <HomePage 
-                    activeCategory={activeCategory}
-                    setActiveCategory={setActiveCategory}
-                    activeSubCategory={activeSubCategory}
-                    setActiveSubCategory={setActiveSubCategory}
-                    subCategories={subCategories}
-                    showOnlyFavs={showOnlyFavs}
-                    setShowOnlyFavs={setShowOnlyFavs}
-                    searchQuery={searchQuery}
-                    favorites={favorites}
-                    handleToggleFavorite={handleToggleFavorite}
-                    handleQuickAddToCart={handleQuickAddToCart}
-                  />
-                } 
-              />
-              <Route 
-                path="/product/:id" 
-                element={
-                  <ProductDetailsPage 
-                    onAddToCart={handleAddToCart} 
-                    onQuickAddToCart={handleQuickAddToCart}
-                    onBuyNow={handleBuyNow}
-                    favorites={favorites}
-                    onToggleFavorite={handleToggleFavorite}
-                  />
-                } 
-              />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/confirm-email" element={<ConfirmEmailPage />} />
-              <Route path="/confirm-email/*" element={<ConfirmEmailPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="/change-password" element={<ChangePasswordPage />} />
-              <Route path="/bundle-checkout" element={<BundleCheckoutPage />} />
-              <Route 
-                path="/subcategory/:id" 
-                element={
-                  <SubCategoryPage 
-                    favorites={favorites}
-                    handleToggleFavorite={handleToggleFavorite}
-                    handleQuickAddToCart={handleQuickAddToCart}
-                  />
-                } 
-              />
-              
-              {/* Policies */}
-              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              <Route path="/refund-policy" element={<RefundPolicy />} />
-              <Route path="/terms-conditions" element={<TermsConditions />} />
-              <Route path="/shipping-policy" element={<ShippingPolicy />} />
-            </Routes>
+            <div style={{ flexGrow: 1 }}>
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <HomePage
+                      activeCategory={activeCategory}
+                      setActiveCategory={setActiveCategory}
+                      activeSubCategory={activeSubCategory}
+                      setActiveSubCategory={setActiveSubCategory}
+                      subCategories={subCategories}
+                      showOnlyFavs={showOnlyFavs}
+                      setShowOnlyFavs={setShowOnlyFavs}
+                      searchQuery={searchQuery}
+                      favorites={favorites}
+                      handleToggleFavorite={handleToggleFavorite}
+                      handleQuickAddToCart={handleQuickAddToCart}
+                    />
+                  }
+                />
+                <Route
+                  path="/product/:id"
+                  element={
+                    <ProductDetailsPage
+                      onAddToCart={handleAddToCart}
+                      onQuickAddToCart={handleQuickAddToCart}
+                      onBuyNow={handleBuyNow}
+                      favorites={favorites}
+                      onToggleFavorite={handleToggleFavorite}
+                    />
+                  }
+                />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/confirm-email" element={<ConfirmEmailPage />} />
+                <Route path="/confirm-email/*" element={<ConfirmEmailPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/change-password" element={<ChangePasswordPage />} />
+                <Route path="/bundle-checkout" element={<BundleCheckoutPage />} />
+                <Route
+                  path="/subcategory/:id"
+                  element={
+                    <SubCategoryPage
+                      favorites={favorites}
+                      handleToggleFavorite={handleToggleFavorite}
+                      handleQuickAddToCart={handleQuickAddToCart}
+                    />
+                  }
+                />
+
+                {/* Policies */}
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/refund-policy" element={<RefundPolicy />} />
+                <Route path="/terms-conditions" element={<TermsConditions />} />
+                <Route path="/shipping-policy" element={<ShippingPolicy />} />
+              </Routes>
+            </div>
+
+            <footer style={{ backgroundColor: 'var(--primary-dark)', color: 'white', marginTop: 'auto', borderTopRightRadius: 'var(--radius-lg)', borderTopLeftRadius: 'var(--radius-lg)' }}>
+              <div className="section-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2.5rem', padding: '4rem 2rem 2rem' }}>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <img src="/logo.png" alt="شعار المتجر في الأسفل" style={{ width: '40px', height: '40px' }} />
+                    <span style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--secondary)' }}>متجر البط</span>
+                  </div>
+                  <p style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)', lineHeight: '1.8' }}>
+                    منصتك الإلكترونية الأولى لشراء المنتجات الأصلية من أشهر الماركات العالمية والمصريه وشحنها مباشرة إلى باب منزلك ودعم الدفع المحلي بالكامل.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 style={{ color: 'var(--secondary)', marginBottom: '1.2rem', fontWeight: '700' }}>روابط مهمة</h4>
+                  <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.8)' }}>
+                    <li><a href="#explore-products" onClick={(e) => { e.preventDefault(); scrollToCatalog(); }} style={{ transition: 'var(--transition)' }}>تصفح كافة المنتجات</a></li>
+                    <li><Link to="/refund-policy" style={{ transition: 'var(--transition)' }}>سياسة الاستبدال والاسترجاع</Link></li>
+                    <li><Link to="/privacy-policy" style={{ transition: 'var(--transition)' }}>سياسة الخصوصية</Link></li>
+                    <li><Link to="/terms-conditions" style={{ transition: 'var(--transition)' }}>الشروط والأحكام</Link></li>
+                    <li><Link to="/shipping-policy" style={{ transition: 'var(--transition)' }}>سياسة الشحن والتوصيل</Link></li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 style={{ color: 'var(--secondary)', marginBottom: '1.2rem', fontWeight: '700' }}>تواصل معنا</h4>
+                  <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.8)' }}>
+                    <li>📍 القاهرة، جمهورية مصر العربية</li>
+                    <li>📧 {storeSettings.email}</li>
+                    <li>📞 {storeSettings.phone}</li>
+                    <li style={{ marginTop: '0.8rem', display: 'flex', gap: '0.75rem' }}>
+                      <a
+                        href={storeSettings.facebook}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="فيسبوك"
+                        style={{
+                          color: 'rgba(255, 255, 255, 0.8)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '50%',
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#1877F2';
+                          e.currentTarget.style.color = '#fff';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                          e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                      >
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                        </svg>
+                      </a>
+                      <a
+                        href={storeSettings.instagram}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="انستغرام"
+                        style={{
+                          color: 'rgba(255, 255, 255, 0.8)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '50%',
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#E1306C';
+                          e.currentTarget.style.color = '#fff';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                          e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                      >
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                          <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                        </svg>
+                      </a>
+                      <a
+                        href={storeSettings.tiktok}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="تيك توك"
+                        style={{
+                          color: 'rgba(255, 255, 255, 0.8)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '50%',
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#000000';
+                          e.currentTarget.style.color = '#fff';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                          e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                      >
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                          <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.05 1.72 4.13 1.12 1.09 2.66 1.62 4.2 1.65v3.91c-1.28-.02-2.54-.37-3.64-1.04-.63-.38-1.18-.89-1.61-1.5-.04 2.82.04 5.64-.02 8.46-.07 1.83-.75 3.65-2.03 4.96-1.57 1.58-3.9 2.45-6.14 2.19-2.6-.29-4.88-2.22-5.46-4.78-.71-2.94.75-6.22 3.48-7.39.81-.35 1.7-.51 2.58-.48v3.95c-.75-.12-1.55.12-2.08.68-.69.69-.76 1.87-.14 2.64.53.68 1.48.97 2.29.62.63-.26 1.05-.88 1.09-1.56.09-3.72.03-7.44.06-11.16-.01-.39.02-.79.03-1.18z" />
+                        </svg>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 style={{ color: 'var(--secondary)', marginBottom: '1.2rem', fontWeight: '700' }}>انضم لعائلة البط</h4>
+                  <p style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)', marginBottom: '0.8rem' }}>
+                    اشترك في قائمتنا البريدية للحصول على خصومات وعروض حصرية لمنتجات البط!
+                  </p>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <input
+                      type="email"
+                      placeholder="بريدك الإلكتروني"
+                      style={{ flexGrow: 1, padding: '0.5rem 0.8rem', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', outline: 'none' }}
+                    />
+                    <button
+                      className="btn-primary"
+                      style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderRadius: 'var(--radius-sm)', boxShadow: 'none' }}
+                      onClick={() => showToast("شكراً للاشتراك بنجاح! 🎉")}
+                    >
+                      اشتراك
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ textAlign: 'center', padding: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+                جميع الحقوق محفوظة © {new Date().getFullYear()} لمتجر البط. صنع بكل 💛 لتسهيل تسوقك.
+              </div>
+            </footer>
+
+            <CartDrawer
+              isOpen={isCartOpen}
+              onClose={() => setIsCartOpen(false)}
+              cartItems={cartItems}
+              onUpdateQuantity={handleUpdateCartQuantity}
+              onRemoveItem={handleRemoveCartItem}
+              onCheckoutOpen={() => {
+                setIsCartOpen(false);
+                setIsCheckoutOpen(true);
+              }}
+            />
+
+            <CheckoutModal
+              isOpen={isCheckoutOpen}
+              onClose={() => {
+                setIsCheckoutOpen(false);
+                setBuyNowItem(null);
+              }}
+              cartItems={buyNowItem ? [buyNowItem] : cartItems}
+            />
+
+            <Toast toasts={toasts} onClose={removeToast} />
+            <WhatsAppButton />
           </div>
-
-          <footer style={{ backgroundColor: 'var(--primary-dark)', color: 'white', marginTop: 'auto', borderTopRightRadius: 'var(--radius-lg)', borderTopLeftRadius: 'var(--radius-lg)' }}>
-            <div className="section-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2.5rem', padding: '4rem 2rem 2rem' }}>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <img src="/logo.png" alt="شعار المتجر في الأسفل" style={{ width: '40px', height: '40px' }} />
-                  <span style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--secondary)' }}>متجر البطّ</span>
-                </div>
-                <p style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)', lineHeight: '1.8' }}>
-                  منصتك الإلكترونية الأولى لشراء المنتجات الأصلية من أشهر الماركات العالمية والمصريه وشحنها مباشرة إلى باب منزلك ودعم الدفع المحلي بالكامل.
-                </p>
-              </div>
-
-              <div>
-                <h4 style={{ color: 'var(--secondary)', marginBottom: '1.2rem', fontWeight: '700' }}>روابط مهمة</h4>
-                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.8)' }}>
-                  <li><a href="#explore-products" onClick={(e) => { e.preventDefault(); scrollToCatalog(); }} style={{ transition: 'var(--transition)' }}>تصفح كافة المنتجات</a></li>
-                  <li><Link to="/refund-policy" style={{ transition: 'var(--transition)' }}>سياسة الاستبدال والاسترجاع</Link></li>
-                  <li><Link to="/privacy-policy" style={{ transition: 'var(--transition)' }}>سياسة الخصوصية</Link></li>
-                  <li><Link to="/terms-conditions" style={{ transition: 'var(--transition)' }}>الشروط والأحكام</Link></li>
-                  <li><Link to="/shipping-policy" style={{ transition: 'var(--transition)' }}>سياسة الشحن والتوصيل</Link></li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 style={{ color: 'var(--secondary)', marginBottom: '1.2rem', fontWeight: '700' }}>تواصل معنا</h4>
-                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.8)' }}>
-                  <li>📍 القاهرة، جمهورية مصر العربية</li>
-                  <li>📧 {storeSettings.email}</li>
-                  <li>📞 {storeSettings.phone}</li>
-                  <li style={{ marginTop: '0.8rem', display: 'flex', gap: '0.75rem' }}>
-                    <a 
-                      href={storeSettings.facebook} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      title="فيسبوك" 
-                      style={{ 
-                        color: 'rgba(255, 255, 255, 0.8)', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        width: '36px', 
-                        height: '36px', 
-                        borderRadius: '50%', 
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)', 
-                        transition: 'all 0.3s ease' 
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#1877F2';
-                        e.currentTarget.style.color = '#fff';
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                      </svg>
-                    </a>
-                    <a 
-                      href={storeSettings.instagram} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      title="انستغرام" 
-                      style={{ 
-                        color: 'rgba(255, 255, 255, 0.8)', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        width: '36px', 
-                        height: '36px', 
-                        borderRadius: '50%', 
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)', 
-                        transition: 'all 0.3s ease' 
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#E1306C';
-                        e.currentTarget.style.color = '#fff';
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                      </svg>
-                    </a>
-                    <a 
-                      href={storeSettings.tiktok} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      title="تيك توك" 
-                      style={{ 
-                        color: 'rgba(255, 255, 255, 0.8)', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        width: '36px', 
-                        height: '36px', 
-                        borderRadius: '50%', 
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)', 
-                        transition: 'all 0.3s ease' 
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#000000';
-                        e.currentTarget.style.color = '#fff';
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                        <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.05 1.72 4.13 1.12 1.09 2.66 1.62 4.2 1.65v3.91c-1.28-.02-2.54-.37-3.64-1.04-.63-.38-1.18-.89-1.61-1.5-.04 2.82.04 5.64-.02 8.46-.07 1.83-.75 3.65-2.03 4.96-1.57 1.58-3.9 2.45-6.14 2.19-2.6-.29-4.88-2.22-5.46-4.78-.71-2.94.75-6.22 3.48-7.39.81-.35 1.7-.51 2.58-.48v3.95c-.75-.12-1.55.12-2.08.68-.69.69-.76 1.87-.14 2.64.53.68 1.48.97 2.29.62.63-.26 1.05-.88 1.09-1.56.09-3.72.03-7.44.06-11.16-.01-.39.02-.79.03-1.18z"/>
-                      </svg>
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 style={{ color: 'var(--secondary)', marginBottom: '1.2rem', fontWeight: '700' }}>انضم لعائلة البطّ</h4>
-                <p style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)', marginBottom: '0.8rem' }}>
-                  اشترك في قائمتنا البريدية للحصول على خصومات وعروض حصرية لمنتجات البط!
-                </p>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  <input 
-                    type="email" 
-                    placeholder="بريدك الإلكتروني" 
-                    style={{ flexGrow: 1, padding: '0.5rem 0.8rem', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', outline: 'none' }}
-                  />
-                  <button 
-                    className="btn-primary" 
-                    style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderRadius: 'var(--radius-sm)', boxShadow: 'none' }}
-                    onClick={() => showToast("شكراً للاشتراك بنجاح! 🎉")}
-                  >
-                    اشتراك
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ textAlign: 'center', padding: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.5)' }}>
-              جميع الحقوق محفوظة © {new Date().getFullYear()} لمتجر البطّ. صنع بكل 💛 لتسهيل تسوقك.
-            </div>
-          </footer>
-
-          <CartDrawer
-            isOpen={isCartOpen}
-            onClose={() => setIsCartOpen(false)}
-            cartItems={cartItems}
-            onUpdateQuantity={handleUpdateCartQuantity}
-            onRemoveItem={handleRemoveCartItem}
-            onCheckoutOpen={() => {
-              setIsCartOpen(false);
-              setIsCheckoutOpen(true);
-            }}
-          />
-
-          <CheckoutModal
-            isOpen={isCheckoutOpen}
-            onClose={() => {
-              setIsCheckoutOpen(false);
-              setBuyNowItem(null);
-            }}
-            cartItems={buyNowItem ? [buyNowItem] : cartItems}
-          />
-
-          <Toast toasts={toasts} onClose={removeToast} />
-          <WhatsAppButton />
-        </div>
-      } />
-    </Routes>
+        } />
+      </Routes>
     </Suspense>
   );
 }

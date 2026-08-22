@@ -7,8 +7,8 @@ export const RefundPolicy: React.FC = () => {
   const settings = getStoreSettings();
 
   useSEO({
-    title: 'سياسة الاستبدال والاسترجاع | متجر البطّ',
-    description: 'تعرف على سياسة الاستبدال والاسترجاع في متجر البطّ — معاينة مجانية قبل الاستلام وحماية كاملة لحقوقك كعميل.',
+    title: 'سياسة الاستبدال والاسترجاع | متجر البط',
+    description: 'تعرف على سياسة الاستبدال والاسترجاع في متجر البط — معاينة مجانية قبل الاستلام وحماية كاملة لحقوقك كعميل.',
     url: '/refund-policy',
   });
 
@@ -20,7 +20,7 @@ export const RefundPolicy: React.FC = () => {
       </div>
 
       <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', fontSize: '1.05rem' }}>
-        في <strong>عائلة البطّ (Elbat)</strong>، نثق 100% في جودة خاماتنا ومنتجاتنا، ولأننا نؤمن بأن الثقة والشفافية هي أساس أي معاملة ناجحة، فإننا نمنح عملائنا الحق الكامل في المعاينة والفحص قبل دفع أي مبالغ.
+        في <strong>عائلة البط (Elbat)</strong>، نثق 100% في جودة خاماتنا ومنتجاتنا، ولأننا نؤمن بأن الثقة والشفافية هي أساس أي معاملة ناجحة، فإننا نمنح عملائنا الحق الكامل في المعاينة والفحص قبل دفع أي مبالغ.
       </p>
 
       {/* 1. Pre-delivery Inspection */}
@@ -53,7 +53,7 @@ export const RefundPolicy: React.FC = () => {
         <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
           نوضح لجميع عملائنا الكرام سيناريوهات المعاينة والاستلام بمنتهى الشفافية:
         </p>
-        
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ borderLeft: '4px solid #2e7d32', padding: '1rem', background: 'rgba(46,125,50,0.03)', borderRadius: '0 8px 8px 0' }}>
             <h4 style={{ margin: '0 0 0.4rem', color: '#2e7d32', fontWeight: 700 }}>أ) في حالة كان المنتج سليماً ومطابقاً لطلبك:</h4>

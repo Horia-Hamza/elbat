@@ -38,17 +38,17 @@ export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   useSEO({
-    title: subCategory ? `${subCategory.name} | متجر البطّ` : 'أقسام المتجر | متجر البطّ',
+    title: subCategory ? `${subCategory.name} | متجر البط` : 'أقسام المتجر | متجر البط',
     description: subCategory
-      ? `تصفح منتجات ${subCategory.name} في متجر البطّ — أفضل المنتجات بأسعار مناسبة وشحن سريع لجميع أنحاء مصر.`
-      : 'متجر البطّ — تصفح منتجاتنا واكتشف عروضنا الحصرية.',
+      ? `تصفح منتجات ${subCategory.name} في متجر البط — أفضل المنتجات بأسعار مناسبة وشحن سريع لجميع أنحاء مصر.`
+      : 'متجر البط — تصفح منتجاتنا واكتشف عروضنا الحصرية.',
     url: id ? `/subcategory/${id}` : undefined,
     type: 'website',
   });
 
   useEffect(() => {
     if (!id) return;
-    
+
     const fetchSubCategoryData = async () => {
       setLoading(true);
       setError(null);
@@ -72,12 +72,12 @@ export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
 
   if (loading) {
     return (
-      <div 
-        style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
           minHeight: '60vh',
           gap: '1rem',
           color: 'var(--primary)'
@@ -91,13 +91,13 @@ export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
 
   if (error || !subCategory) {
     return (
-      <div 
-        className="section-container" 
-        style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
+      <div
+        className="section-container"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
           minHeight: '60vh',
           textAlign: 'center',
           gap: '1.5rem',
@@ -111,8 +111,8 @@ export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>{error || 'لم نتمكن من العثور على هذا القسم.'}</p>
         </div>
-        <button 
-          className="btn-primary" 
+        <button
+          className="btn-primary"
           onClick={() => navigate('/')}
           style={{ padding: '0.6rem 2rem' }}
         >
@@ -126,9 +126,9 @@ export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
 
   return (
     <div className="section-container subcategory-page-container" style={{ padding: '1rem 1.5rem 4rem', direction: 'rtl' }}>
-      
+
       {/* Category Header Banner */}
-      <div 
+      <div
         className="subcategory-banner"
         style={{
           background: 'linear-gradient(135deg, var(--primary-light) 0%, rgba(35,107,147,0.02) 100%)',
@@ -149,11 +149,11 @@ export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
           <span style={{ fontWeight: 'bold' }}>{subCategory.name}</span>
         </div>
 
-        <h1 
+        <h1
           className="subcategory-banner-title"
-          style={{ 
-            fontSize: '1.3rem', 
-            fontWeight: 800, 
+          style={{
+            fontSize: '1.3rem',
+            fontWeight: 800,
             color: 'var(--primary-dark)',
             margin: '0.1rem 0 0'
           }}
@@ -166,13 +166,13 @@ export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
       <div style={{ marginBottom: '1rem' }}>
 
         {products.length === 0 ? (
-          <div 
-            style={{ 
-              textAlign: 'center', 
-              padding: '4rem 2rem', 
-              background: '#fff', 
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '4rem 2rem',
+              background: '#fff',
               borderRadius: 'var(--radius-md)',
-              border: '1.5px dashed var(--border)' 
+              border: '1.5px dashed var(--border)'
             }}
           >
             <h3 style={{ color: 'var(--text-main)', fontWeight: 700, fontSize: '1.2rem' }}>لا توجد منتجات متوفرة في هذا القسم حالياً!</h3>

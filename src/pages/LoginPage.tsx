@@ -20,10 +20,10 @@ export const LoginPage: React.FC = () => {
     setError(null);
     try {
       const response = await authApi.login({ email, password });
-      
+
       // Save tokens & decoded user info to localStorage
       saveAuthSession(response);
-      
+
       navigate('/');
       window.location.reload(); // Reload to sync cart/wishlist
     } catch (err: any) {
@@ -54,9 +54,9 @@ export const LoginPage: React.FC = () => {
       }}>
         {/* Logo */}
         <img src="/logo.png" alt="متجر البط" style={{ width: '70px', height: '70px', marginBottom: '1rem', borderRadius: '50%' }} />
-        
+
         <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--primary-dark)', marginBottom: '0.5rem' }}>تسجيل الدخول</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '2rem' }}>مرحباً بك مجدداً في متجر البطّ </p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '2rem' }}>مرحباً بك مجدداً في متجر البط </p>
 
         {infoMessage && (
           <div style={{

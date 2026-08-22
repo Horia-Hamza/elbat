@@ -22,7 +22,7 @@ export const AdminLayout: React.FC = () => {
 
   // Helper to map route to page title
   const getPageTitle = () => {
-    const current = navLinks.find(link => 
+    const current = navLinks.find(link =>
       link.exact ? location.pathname === link.path : location.pathname.startsWith(link.path)
     );
     return current ? current.label : 'لوحة الإدارة';
@@ -34,9 +34,9 @@ export const AdminLayout: React.FC = () => {
       <aside className="admin-sidebar">
         <div className="admin-brand">
           <img src="/logo.png" alt="شعار البط" />
-          <span>إدارة البطّ</span>
+          <span>إدارة البط</span>
         </div>
-        
+
         <nav className="admin-nav">
           {navLinks.map((link) => (
             <NavLink
@@ -64,7 +64,7 @@ export const AdminLayout: React.FC = () => {
         {/* Top Navbar */}
         <header className="admin-topbar">
           <h1 className="admin-topbar-title">{getPageTitle()}</h1>
-          
+
           <div className="admin-topbar-actions">
             <button className="admin-icon-btn">
               <Search size={20} />

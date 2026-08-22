@@ -4,13 +4,13 @@ import { authApi } from '../api/auth';
 import { Mail, Lock, User, Loader2, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
-  
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -27,7 +27,7 @@ export const RegisterPage: React.FC = () => {
         firstName,
         lastName
       });
-      
+
       setSuccessMessage(response?.message || 'تم إنشاء الحساب بنجاح! يرجى تأكيد بريدك الإلكتروني.');
       // Clear form
       setFirstName(''); setLastName(''); setEmail(''); setPassword('');
@@ -59,9 +59,9 @@ export const RegisterPage: React.FC = () => {
       }}>
         {/* Logo */}
         <img src="/logo.png" alt="متجر البط" style={{ width: '70px', height: '70px', marginBottom: '1rem', borderRadius: '50%' }} />
-        
+
         <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--primary-dark)', marginBottom: '0.5rem' }}>إنشاء حساب جديد</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '2rem' }}>انضم لعائلة البطّ وتسوق منتجاتك المفضلة بسهولة </p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '2rem' }}>انضم لعائلة البط وتسوق منتجاتك المفضلة بسهولة </p>
 
         {successMessage ? (
           <div style={{

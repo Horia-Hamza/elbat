@@ -32,15 +32,15 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   // Build SEO data from product
   const seoData = useMemo(() => {
     if (!product) return {
-      title: 'جاري التحميل... | متجر البطّ',
-      description: 'متجر البطّ — منتجات مبتكرة للمنزل والعناية الشخصية.',
+      title: 'جاري التحميل... | متجر البط',
+      description: 'متجر البط — منتجات مبتكرة للمنزل والعناية الشخصية.',
     };
     const price = product.salePrice ?? product.basePrice;
     const mainImage = product.mainImageUrl
       ? (product.mainImageUrl.startsWith('http') ? product.mainImageUrl : `${IMAGES_BASE_URL}${product.mainImageUrl}`)
       : 'https://www.elbat.store/logo.png';
     const description = product.description || product.shortDescription
-      || `اشتري ${product.name} من متجر البطّ بسعر ${price} ج.م. شحن سريع لجميع أنحاء مصر.`;
+      || `اشتري ${product.name} من متجر البط بسعر ${price} ج.م. شحن سريع لجميع أنحاء مصر.`;
 
     const jsonLd: Record<string, unknown> = {
       '@context': 'https://schema.org',
@@ -60,12 +60,12 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
           ? 'https://schema.org/OutOfStock'
           : 'https://schema.org/InStock',
         url: `https://www.elbat.store/product/${product.id}`,
-        seller: { '@type': 'Organization', name: 'متجر البطّ' },
+        seller: { '@type': 'Organization', name: 'متجر البط' },
       },
     };
 
     return {
-      title: `${product.name} | متجر البطّ`,
+      title: `${product.name} | متجر البط`,
       description: description.slice(0, 160),
       image: mainImage,
       url: `/product/${product.id}`,
@@ -999,7 +999,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                 const targetVar = clickedVariant
                   || product.variants?.find(v => v.inventory?.isLowStock === true)
                   || product.variants?.find(v => v.inventory?.isLowStock);
-                
+
                 if (!targetVar || !targetVar.inventory) return null;
                 const inv = targetVar.inventory;
 

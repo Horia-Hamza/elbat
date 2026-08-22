@@ -50,23 +50,42 @@ export const PaymentSuccessPage: React.FC = () => {
     );
   }, []);
 
+  const handleStartDrag = (clientX: number, clientY: number, currentTarget: HTMLImageElement, id: number) => {
+    const rect = currentTarget.getBoundingClientRect();
+    setBubbles(prev => prev.map(bub => bub.id === id ? { ...bub, releasedPos: undefined } : bub));
+    setDragState({ id, x: rect.left, y: rect.top, offsetX: clientX - rect.left, offsetY: clientY - rect.top });
+  };
+
   useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
+    const onMove = (clientX: number, clientY: number) => {
       const ds = dragStateRef.current;
       if (!ds) return;
-      setDragState(prev => prev ? { ...prev, x: e.clientX - prev.offsetX, y: e.clientY - prev.offsetY } : null);
+      setDragState(prev => prev ? { ...prev, x: clientX - prev.offsetX, y: clientY - prev.offsetY } : null);
     };
-    const onMouseUp = () => {
+    const onMouseMove = (e: MouseEvent) => onMove(e.clientX, e.clientY);
+    const onTouchMove = (e: TouchEvent) => {
+      if (dragStateRef.current && e.touches.length > 0) {
+        if (e.cancelable) e.preventDefault();
+        onMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+    const onRelease = () => {
       const ds = dragStateRef.current;
       if (!ds) return;
       setBubbles(prev => prev.map(b => b.id === ds.id ? { ...b, releasedPos: { x: ds.x, y: ds.y } } : b));
       setDragState(null);
     };
     window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('mouseup', onRelease);
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onRelease);
+    window.addEventListener('touchcancel', onRelease);
     return () => {
       window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('mouseup', onRelease);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onRelease);
+      window.removeEventListener('touchcancel', onRelease);
     };
   }, []);
 
@@ -142,14 +161,20 @@ export const PaymentSuccessPage: React.FC = () => {
                 userSelect: 'none',
                 transform: isDragging ? 'scale(1.1)' : undefined,
                 pointerEvents: 'all',
+                touchAction: 'none',
               }}
+              draggable={false}
               onMouseEnter={() => { if (!isDragging) setHoveredDuck(b.id); }}
               onMouseLeave={() => { if (!isDragging) setHoveredDuck(null); }}
               onMouseDown={e => {
                 e.preventDefault();
-                const rect = (e.currentTarget as HTMLImageElement).getBoundingClientRect();
-                setBubbles(prev => prev.map(bub => bub.id === b.id ? { ...bub, releasedPos: undefined } : bub));
-                setDragState({ id: b.id, x: rect.left, y: rect.top, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top });
+                handleStartDrag(e.clientX, e.clientY, e.currentTarget as HTMLImageElement, b.id);
+              }}
+              onTouchStart={e => {
+                if (e.touches.length === 1) {
+                  if (e.cancelable) e.preventDefault();
+                  handleStartDrag(e.touches[0].clientX, e.touches[0].clientY, e.currentTarget as HTMLImageElement, b.id);
+                }
               }}
               onAnimationEnd={e => {
                 if (e.animationName === 'floatDuckFromPos') {
@@ -181,7 +206,7 @@ export const PaymentSuccessPage: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.2rem' }}>
           <img
             src="/logo.png"
-            alt="متجر البطّ"
+            alt="متجر البط"
             style={{
               width: '72px', height: '72px',
               borderRadius: '50%',
@@ -301,7 +326,7 @@ export const PaymentSuccessPage: React.FC = () => {
 
         {/* Footer */}
         <p style={{ marginTop: '1.8rem', fontSize: '0.75rem', color: '#ccc' }}>
-          متجر البطّ — شكراً لثقتك بنا
+          متجر البط — شكراً لثقتك بنا
         </p>
       </div>
 

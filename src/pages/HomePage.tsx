@@ -49,8 +49,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   const navigate = useNavigate();
 
   useSEO({
-    title: 'متجر البطّ | منتجات مبتكرة للمنزل والعناية الشخصية',
-    description: 'تسوق من متجر البطّ — أفضل المنتجات المبتكرة للمنزل والعناية الشخصية بأسعار مناسبة وشحن سريع لجميع أنحاء مصر. اكتشف عروضنا الحصرية الآن!',
+    title: 'متجر البط | منتجات مبتكرة للمنزل والعناية الشخصية',
+    description: 'تسوق من متجر البط — أفضل المنتجات المبتكرة للمنزل والعناية الشخصية بأسعار مناسبة وشحن سريع لجميع أنحاء مصر. اكتشف عروضنا الحصرية الآن!',
     url: '/',
     type: 'website',
   });
@@ -59,7 +59,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [hoveredDuck, setHoveredDuck] = useState<number | null>(null);
 
   const { categories } = useCategories();
-  
+
   const { products, loading: productsLoading } = useProducts({
     pageNumber: 1,
     pageSize: 24,
@@ -88,20 +88,42 @@ export const HomePage: React.FC<HomePageProps> = ({
   const dragStateRef = useRef(dragState);
   dragStateRef.current = dragState;
 
-  // Global listeners for drag move + release
+  // Helper for starting drag (works for both mouse and touch)
+  const handleStartDrag = (clientX: number, clientY: number, currentTarget: HTMLImageElement, id: number) => {
+    const rect = currentTarget.getBoundingClientRect();
+    setBubbles((prev) =>
+      prev.map((bub) => bub.id === id ? { ...bub, releasedPos: undefined } : bub)
+    );
+    setDragState({
+      id,
+      x: rect.left,
+      y: rect.top,
+      offsetX: clientX - rect.left,
+      offsetY: clientY - rect.top,
+    });
+  };
+
+  // Global listeners for drag move + release (mouse + touch)
   useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
+    const onMove = (clientX: number, clientY: number) => {
       const ds = dragStateRef.current;
       if (!ds) return;
       setDragState((prev) =>
-        prev ? { ...prev, x: e.clientX - prev.offsetX, y: e.clientY - prev.offsetY } : null
+        prev ? { ...prev, x: clientX - prev.offsetX, y: clientY - prev.offsetY } : null
       );
     };
 
-    const onMouseUp = () => {
+    const onMouseMove = (e: MouseEvent) => onMove(e.clientX, e.clientY);
+    const onTouchMove = (e: TouchEvent) => {
+      if (dragStateRef.current && e.touches.length > 0) {
+        if (e.cancelable) e.preventDefault();
+        onMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const onRelease = () => {
       const ds = dragStateRef.current;
       if (!ds) return;
-      // Save the drop position so the duck can float away from there
       setBubbles((prev) =>
         prev.map((b) =>
           b.id === ds.id ? { ...b, releasedPos: { x: ds.x, y: ds.y } } : b
@@ -111,10 +133,17 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
 
     window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('mouseup', onRelease);
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onRelease);
+    window.addEventListener('touchcancel', onRelease);
+
     return () => {
       window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('mouseup', onRelease);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onRelease);
+      window.removeEventListener('touchcancel', onRelease);
     };
   }, []);
 
@@ -160,7 +189,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
     // Search check
     const queryLower = searchQuery.toLowerCase().trim();
-    const matchesSearch = !queryLower || 
+    const matchesSearch = !queryLower ||
       product.name.toLowerCase().includes(queryLower) ||
       (product.description && product.description.toLowerCase().includes(queryLower)) ||
       (product.shortDescription && product.shortDescription.toLowerCase().includes(queryLower));
@@ -192,9 +221,9 @@ export const HomePage: React.FC<HomePageProps> = ({
         <section className="section-container" style={{ paddingTop: '1rem', minHeight: '400px' }}>
           <div className="section-header">
             <h2 className="section-title">
-              {showOnlyFavs 
-                ? 'المنتجات المفضلة لديك' 
-                : activeSubCategory === 'all' 
+              {showOnlyFavs
+                ? 'المنتجات المفضلة لديك'
+                : activeSubCategory === 'all'
                   ? (activeCategory === 'all' ? 'منتجات البط المميزه' : categories.find(c => c.id.toString() === activeCategory)?.name || 'المنتجات')
                   : subCategories.find(sc => sc.id.toString() === activeSubCategory)?.name || 'المنتجات'}
             </h2>
@@ -244,22 +273,18 @@ export const HomePage: React.FC<HomePageProps> = ({
               src="/new-duck.png"
               alt=""
               className={`floating-duck-bg${isReleased ? ' duck-float-away' : ''}`}
+              draggable={false}
               onMouseEnter={() => { if (!isDragging) setHoveredDuck(b.id); }}
               onMouseLeave={() => { if (!isDragging) setHoveredDuck(null); }}
               onMouseDown={(e) => {
                 e.preventDefault();
-                const rect = (e.currentTarget as HTMLImageElement).getBoundingClientRect();
-                // Clear any pending release animation before dragging again
-                setBubbles((prev) =>
-                  prev.map((bub) => bub.id === b.id ? { ...bub, releasedPos: undefined } : bub)
-                );
-                setDragState({
-                  id: b.id,
-                  x: rect.left,
-                  y: rect.top,
-                  offsetX: e.clientX - rect.left,
-                  offsetY: e.clientY - rect.top,
-                });
+                handleStartDrag(e.clientX, e.clientY, e.currentTarget as HTMLImageElement, b.id);
+              }}
+              onTouchStart={(e) => {
+                if (e.touches.length === 1) {
+                  if (e.cancelable) e.preventDefault();
+                  handleStartDrag(e.touches[0].clientX, e.touches[0].clientY, e.currentTarget as HTMLImageElement, b.id);
+                }
               }}
               onAnimationEnd={(e) => {
                 // Only reset on the float-away animation ending, not the looping one
@@ -287,6 +312,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 animationPlayState: isHovered ? 'paused' : 'running',
                 opacity: isDragging ? 0.85 : undefined,
                 cursor: isDragging ? 'grabbing' : 'grab',
+                touchAction: 'none',
                 filter: isDragging
                   ? 'drop-shadow(0 0 20px rgba(255, 220, 50, 1)) brightness(1.3)'
                   : isHovered
