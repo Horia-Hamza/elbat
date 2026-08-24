@@ -72,7 +72,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="product-rating">
           <Star className="star-icon" size={14} />
           <span className="rating-count">
-            {product.averageRating || 0} ({product.reviewCount || 0} تقييم)
+            100% {product.averageRating || 0} ({product.reviewCount || 0} تقييم)
           </span>
         </div>
 

@@ -72,7 +72,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   // ── UI State ───────────────────────────────────────────────
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('online');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
   const [isCreateAccountOpen, setIsCreateAccountOpen] = useState(false);
 
   // ── Totals ─────────────────────────────────────────────────
@@ -304,7 +304,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setCountry('مصر'); setState(''); setCity(''); setAddressLine1('');
     setAddressLine2(''); setNotes(''); setCouponCode('');
     setSelectedZone(null);
-    setPaymentMethod('online');
+    setPaymentMethod('cod');
     setIsCreateAccountOpen(false);
     setError(null);
   };
@@ -404,22 +404,25 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   </div>
 
                   <div
-                    onClick={() => setPaymentMethod('online')}
                     style={{
-                      border: `2px solid ${paymentMethod === 'online' ? 'var(--primary)' : 'var(--border)'}`,
-                      background: paymentMethod === 'online' ? 'var(--primary-light)' : '#fff',
+                      border: '1px dashed var(--border)',
+                      background: '#F1F5F9',
                       borderRadius: 'var(--radius-sm)',
                       padding: '0.8rem 1rem',
-                      cursor: 'pointer',
+                      cursor: 'not-allowed',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '4px',
-                      transition: 'all 0.2s ease',
-                      boxShadow: paymentMethod === 'online' ? '0 4px 12px rgba(35,107,147,0.1)' : 'none'
+                      opacity: 0.65,
+                      position: 'relative'
                     }}
+                    title="الدفع الإلكتروني غير مفعل حالياً"
                   >
-                    <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)' }}>💳 بطاقة / محفظة</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>دفع إلكتروني آمن</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-muted)' }}>💳 بطاقة / محفظة</span>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 700, background: '#E2E8F0', color: '#64748B', padding: '2px 6px', borderRadius: '4px' }}>غير مفعل</span>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>قريباً - الدفع المتاح حالياً عند الاستلام</span>
                   </div>
                 </div>
               </div>

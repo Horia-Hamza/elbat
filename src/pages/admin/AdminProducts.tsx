@@ -178,8 +178,10 @@ export const AdminProducts: React.FC = () => {
       try {
         await productsApi.deleteProduct(id);
         refetch();
-      } catch {
-        alert('حدث خطأ أثناء الحذف');
+      } catch (err: any) {
+        const msg = err?.message || 'خطأ غير معروف';
+        alert('حدث خطأ أثناء الحذف:\n' + msg);
+        console.error('Delete product error:', err);
       }
     }
   };

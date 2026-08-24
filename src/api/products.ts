@@ -43,11 +43,23 @@ export const productsApi = {
     brandId: number;
     metaTitle: string;
     metaDescription: string;
-  }) =>
-    apiFetch<ApiProduct>('/Product', {
+  }) => {
+    const clean = {
+      ...data,
+      shortDescription: data.shortDescription || '',
+      description: data.description || '',
+      slug: data.slug || '',
+      sku: data.sku || '',
+      barcode: data.barcode || '',
+      dimensions: data.dimensions || '',
+      metaTitle: data.metaTitle || '',
+      metaDescription: data.metaDescription || '',
+    };
+    return apiFetch<ApiProduct>('/Product', {
       method: 'POST',
-      body: JSON.stringify(data),
-    }),
+      body: JSON.stringify({ dto: clean, ...clean }),
+    });
+  },
 
   updateProduct: (id: number, data: {
     name: string;
@@ -66,11 +78,23 @@ export const productsApi = {
     brandId: number;
     metaTitle: string;
     metaDescription: string;
-  }) =>
-    apiFetch<ApiProduct>(`/Product/${id}`, {
+  }) => {
+    const clean = {
+      ...data,
+      shortDescription: data.shortDescription || '',
+      description: data.description || '',
+      slug: data.slug || '',
+      sku: data.sku || '',
+      barcode: data.barcode || '',
+      dimensions: data.dimensions || '',
+      metaTitle: data.metaTitle || '',
+      metaDescription: data.metaDescription || '',
+    };
+    return apiFetch<ApiProduct>(`/Product/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
-    }),
+      body: JSON.stringify({ dto: clean, ...clean }),
+    });
+  },
 
   deleteProduct: (id: number) =>
     apiFetch<boolean>(`/Product/${id}`, {

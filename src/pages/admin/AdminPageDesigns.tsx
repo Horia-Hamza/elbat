@@ -456,12 +456,12 @@ export const AdminPageDesigns: React.FC = () => {
               <tbody>
                 {designs.map((d, idx) => {
                   const typeInfo = TARGET_TYPE_LABELS[d.targetType] || { label: `${d.targetType}`, color: '#6b7280' };
-                  const designId = idx + 1; // calculated design ID
+                  const designId = d.id ?? idx + 1; // use real DB ID
                   const action = rowActions[idx] || {};
 
                   return (
                     <tr key={idx}>
-                      <td style={{ fontWeight: 700, color: 'var(--admin-text-muted)', fontSize: '0.8rem' }}>{idx + 1}</td>
+                      <td style={{ fontWeight: 700, color: 'var(--admin-primary)', fontSize: '0.8rem' }}>#{d.id ?? idx + 1}</td>
                       <td style={{ fontWeight: 600, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {d.name || <span style={{ color: 'var(--admin-text-muted)', fontStyle: 'italic' }}>بدون اسم</span>}
                       </td>

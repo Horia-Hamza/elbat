@@ -582,86 +582,198 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     const mainImgUrlStr = product.mainImageUrl
       ? (product.mainImageUrl.startsWith('http') ? product.mainImageUrl : `${IMAGES_BASE_URL}${product.mainImageUrl}`)
       : '';
+    const videosJson = JSON.stringify(product.videos || []);
 
     const galleryScriptToInject = `
       try {
         const initialImages = ${imagesJson};
+        const initialVideos = ${videosJson};
         const mainImageResolved = "${mainImgUrlStr}";
         const currentPid = "${product.id}";
         const baseImgUrl = "${IMAGES_BASE_URL}";
 
-        function setupProductGallery(imgList) {
-          const allImgs = [];
-          if (mainImageResolved) {
-            allImgs.push(mainImageResolved);
+        // Track the main image element and the active video element
+        let mainImgEl = null;
+        let activeVideoEl = null;
+
+        function getMainImg() {
+          return document.getElementById('main-image')
+            || document.querySelector('.main-image-container img')
+            || document.querySelector('.img-main img')
+            || document.querySelector('.hero-image img')
+            || document.querySelector('img[src*="uploads"]');
+        }
+
+        function getOrCreateThumbsContainer(mainEl) {
+          let c = document.getElementById('thumbs-list')
+            || document.querySelector('.thumbs-list')
+            || document.querySelector('.product-thumbnails')
+            || document.querySelector('.pdp-thumbnails')
+            || document.querySelector('.thumbs');
+          if (!c && mainEl && mainEl.parentNode) {
+            c = document.createElement('div');
+            c.id = 'dynamic-thumbs-list';
+            c.style.cssText = 'display: flex; gap: 0.6rem; overflow-x: auto; padding: 0.6rem 0; margin-top: 0.75rem; width: 100%; justify-content: center; align-items: center; border-radius: 8px;';
+            mainEl.parentNode.insertBefore(c, mainEl.nextSibling);
           }
+          return c;
+        }
+
+        function showImage(url) {
+          mainImgEl = getMainImg();
+          if (!mainImgEl) return;
+
+          // Remove any active video
+          if (activeVideoEl) {
+            activeVideoEl.pause();
+            activeVideoEl.remove();
+            activeVideoEl = null;
+          }
+          // Restore image visibility
+          mainImgEl.style.display = '';
+          mainImgEl.src = url;
+        }
+
+        function showVideo(videoUrl) {
+          mainImgEl = getMainImg();
+          if (!mainImgEl) return;
+
+          // Remove any existing video
+          if (activeVideoEl) {
+            activeVideoEl.pause();
+            activeVideoEl.remove();
+            activeVideoEl = null;
+          }
+
+          // Create a video element that matches the main image dimensions
+          const rect = mainImgEl.getBoundingClientRect();
+          const vid = document.createElement('video');
+          vid.src = videoUrl.startsWith('http') ? videoUrl : baseImgUrl + videoUrl;
+          vid.controls = true;
+          vid.autoplay = true;
+          vid.playsInline = true;
+          vid.style.cssText = 'width: 100%; max-height: ' + (rect.height || 420) + 'px; object-fit: contain; border-radius: 12px; background: #000; display: block;';
+          activeVideoEl = vid;
+
+          // Hide the main image and insert video before it
+          mainImgEl.style.display = 'none';
+          mainImgEl.parentNode.insertBefore(vid, mainImgEl);
+        }
+
+        function setActiveThumb(thumbsContainer, activeThumb) {
+          if (!thumbsContainer) return;
+          thumbsContainer.querySelectorAll('[data-thumb]').forEach(function(t) {
+            t.style.border = '1px solid #E2E8F0';
+            t.classList.remove('active');
+          });
+          if (activeThumb) {
+            activeThumb.style.border = '3px solid #236B93';
+            activeThumb.classList.add('active');
+          }
+        }
+
+        function setupProductGallery(imgList, videoList) {
+          const allImgs = [];
+          if (mainImageResolved) allImgs.push(mainImageResolved);
           if (Array.isArray(imgList)) {
-            imgList.forEach(img => {
+            imgList.forEach(function(img) {
               const u = img.imageUrl || img.url || '';
               if (u) {
                 const full = u.startsWith('http') ? u : baseImgUrl + u;
-                if (!allImgs.includes(full)) {
-                  allImgs.push(full);
-                }
+                if (!allImgs.includes(full)) allImgs.push(full);
               }
             });
           }
 
-          if (allImgs.length <= 1) return;
-
-          let thumbsContainer = document.getElementById('thumbs-list') || document.querySelector('.thumbs-list') || document.querySelector('.product-thumbnails') || document.querySelector('.pdp-thumbnails') || document.querySelector('.thumbs');
-          let mainImgEl = document.getElementById('main-image') || document.querySelector('.main-image-container img') || document.querySelector('.img-main img') || document.querySelector('.hero-image img') || document.querySelector('img[src*="uploads"]');
-
-          if (!thumbsContainer && mainImgEl && mainImgEl.parentNode) {
-            thumbsContainer = document.createElement('div');
-            thumbsContainer.id = 'dynamic-thumbs-list';
-            thumbsContainer.style.cssText = 'display: flex; gap: 0.6rem; overflow-x: auto; padding: 0.6rem 0; margin-top: 0.75rem; width: 100%; justify-content: center; align-items: center; border-radius: 8px;';
-            mainImgEl.parentNode.insertBefore(thumbsContainer, mainImgEl.nextSibling);
-          }
-
-          if (thumbsContainer) {
-            thumbsContainer.innerHTML = '';
-            thumbsContainer.style.display = 'flex';
-            thumbsContainer.style.gap = '0.6rem';
-            thumbsContainer.style.overflowX = 'auto';
-            thumbsContainer.style.padding = '0.5rem 0';
-            thumbsContainer.style.justifyContent = 'center';
-
-            allImgs.forEach((url, idx) => {
-              const thumb = document.createElement('div');
-              thumb.className = 'thumb' + (idx === 0 ? ' active' : '');
-              thumb.style.cssText = 'width: 64px; height: 64px; border-radius: 10px; border: ' + (idx === 0 ? '3px solid #236B93' : '1px solid #E2E8F0') + '; cursor: pointer; flex-shrink: 0; overflow: hidden; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.06); transition: all 0.2s ease;';
-
-              const img = document.createElement('img');
-              img.src = url;
-              img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
-              img.onerror = function() { this.src = '/logo.png'; };
-
-              thumb.appendChild(img);
-              thumb.onclick = function() {
-                if (mainImgEl) mainImgEl.src = url;
-                thumbsContainer.querySelectorAll('div').forEach(t => {
-                  t.style.border = '1px solid #E2E8F0';
-                  t.classList.remove('active');
-                });
-                thumb.style.border = '3px solid #236B93';
-                thumb.classList.add('active');
-              };
-              thumbsContainer.appendChild(thumb);
+          const allVids = [];
+          if (Array.isArray(videoList)) {
+            videoList.forEach(function(v) {
+              const u = v.videoUrl || v.url || '';
+              if (u) {
+                const full = u.startsWith('http') ? u : baseImgUrl + u;
+                if (!allVids.includes(full)) allVids.push(full);
+              }
             });
           }
+
+          // Need at least 2 images OR 1 image + 1 video to show thumbs
+          if (allImgs.length <= 1 && allVids.length === 0) return;
+
+          mainImgEl = getMainImg();
+          const thumbsContainer = getOrCreateThumbsContainer(mainImgEl);
+          if (!thumbsContainer) return;
+
+          thumbsContainer.innerHTML = '';
+          thumbsContainer.style.cssText = 'display: flex; gap: 0.6rem; overflow-x: auto; padding: 0.5rem 0; justify-content: center; align-items: center; flex-wrap: wrap;';
+
+          // ── Image thumbnails ─────────────────────────────────────────
+          allImgs.forEach(function(url, idx) {
+            const thumb = document.createElement('div');
+            thumb.setAttribute('data-thumb', 'img-' + idx);
+            thumb.className = 'thumb' + (idx === 0 ? ' active' : '');
+            thumb.style.cssText = 'width: 64px; height: 64px; border-radius: 10px; border: ' + (idx === 0 ? '3px solid #236B93' : '1px solid #E2E8F0') + '; cursor: pointer; flex-shrink: 0; overflow: hidden; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.06); transition: all 0.2s ease; position: relative;';
+
+            const img = document.createElement('img');
+            img.src = url;
+            img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+            img.onerror = function() { this.src = '/logo.png'; };
+
+            thumb.appendChild(img);
+            thumb.onclick = function() {
+              setActiveThumb(thumbsContainer, thumb);
+              showImage(url);
+            };
+            thumbsContainer.appendChild(thumb);
+          });
+
+          // ── Video thumbnails ─────────────────────────────────────────
+          allVids.forEach(function(videoUrl, idx) {
+            const thumb = document.createElement('div');
+            thumb.setAttribute('data-thumb', 'vid-' + idx);
+            thumb.className = 'thumb thumb-video';
+            thumb.style.cssText = 'width: 64px; height: 64px; border-radius: 10px; border: 1px solid #E2E8F0; cursor: pointer; flex-shrink: 0; overflow: hidden; background: #0a0a0a; box-shadow: 0 2px 6px rgba(0,0,0,0.15); transition: all 0.2s ease; position: relative; display: flex; align-items: center; justify-content: center;';
+
+            // Play icon overlay
+            const playOverlay = document.createElement('div');
+            playOverlay.style.cssText = 'position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 2;';
+            playOverlay.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="none"><circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.55)" stroke="white" stroke-width="1.5"/><polygon points="9.5,7.5 18,12 9.5,16.5" fill="white"/></svg>';
+
+            // Video poster / preview (muted, no controls, first frame)
+            const previewVid = document.createElement('video');
+            previewVid.src = videoUrl;
+            previewVid.muted = true;
+            previewVid.preload = 'metadata';
+            previewVid.style.cssText = 'width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0;';
+
+            thumb.appendChild(previewVid);
+            thumb.appendChild(playOverlay);
+
+            thumb.onclick = function() {
+              setActiveThumb(thumbsContainer, thumb);
+              showVideo(videoUrl);
+            };
+            thumbsContainer.appendChild(thumb);
+          });
         }
 
-        setupProductGallery(initialImages);
+        setupProductGallery(initialImages, initialVideos);
 
+        // Fetch fresh image list
         if (currentPid) {
           fetch('/api/ProductImage/product/' + currentPid)
             .then(function(res) { return res.ok ? res.json() : null; })
             .then(function(resData) {
               const imgList = resData && resData.success ? resData.data : (Array.isArray(resData) ? resData : []);
-              if (imgList && imgList.length > 0) {
-                setupProductGallery(imgList);
-              }
+              // Also fetch videos in parallel
+              fetch('/api/ProductVideo/product/' + currentPid)
+                .then(function(vRes) { return vRes.ok ? vRes.json() : null; })
+                .then(function(vData) {
+                  const vidList = vData && vData.success ? vData.data : (Array.isArray(vData) ? vData : []);
+                  setupProductGallery(imgList.length > 0 ? imgList : initialImages, vidList.length > 0 ? vidList : initialVideos);
+                })
+                .catch(function() {
+                  if (imgList && imgList.length > 0) setupProductGallery(imgList, initialVideos);
+                });
             })
             .catch(function(err) { console.warn("Could not fetch additional images dynamically:", err); });
         }
@@ -669,6 +781,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
         console.warn("Could not process gallery image response:", err);
       }
     `;
+
 
     // Inject script and style to bridge interactive buttons and hide selectors
     const scriptToInject = `

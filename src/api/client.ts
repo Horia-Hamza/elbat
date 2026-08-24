@@ -58,15 +58,64 @@ export async function apiFetch<T>(
   }
 
   // ── Try to parse JSON response ────────────────────────────────
-  let json: ApiResponse<T>;
   let rawText = '';
   try {
     rawText = await res.text();
-    json = JSON.parse(rawText);
   } catch {
-    console.error(`❌ [PARSE ERROR] ${method} ${url} — status ${res.status}`, rawText);
-    throw new Error(`[${res.status}] Response is not valid JSON: ${rawText.substring(0, 200)}`);
+    console.error(`❌ [READ ERROR] ${method} ${url} — status ${res.status}`);
+    throw new Error(`[${res.status}] Failed to read response body`);
   }
+
+  // 204 No Content or truly empty body — treat as success
+  if (!rawText.trim()) {
+    if (res.ok) {
+      console.groupCollapsed(`✅ [${res.status}] ${path} (empty body)`);
+      console.log('📥 Status  :', res.status, res.statusText);
+      console.groupEnd();
+      return undefined as unknown as T;
+    } else {
+      console.error(`❌ [${res.status}] ${path} — empty error body`);
+      throw new Error(`HTTP ${res.status}`);
+    }
+  }
+
+  // ── Try to parse JSON ─────────────────────────────────────────
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    // Non-JSON response (e.g. IIS HTML error page)
+    if (!res.ok) {
+      // Extract a readable message — for IIS pages, try to pull the status line
+      const statusHint =
+        res.status === 401 ? 'غير مصرح — يرجى تسجيل الدخول مجدداً'
+        : res.status === 403 ? 'ممنوع — ليس لديك صلاحية لهذا الإجراء'
+        : res.status === 404 ? 'العنصر غير موجود'
+        : res.status === 500 ? 'خطأ في الخادم الداخلي'
+        : `HTTP ${res.status}`;
+      console.error(`❌ [${res.status}] ${method} ${url} — non-JSON body:`, rawText.substring(0, 300));
+      throw new Error(statusHint);
+    }
+    // Non-JSON but ok (rare) — return raw text
+    console.warn(`⚠️ [${res.status}] ${path} — non-JSON ok response`);
+    return rawText as unknown as T;
+  }
+
+  // Handle bare primitives (true, false, number) — treat as success data
+  if (typeof parsed !== 'object' || parsed === null) {
+    if (res.ok) {
+      console.groupCollapsed(`✅ [${res.status}] ${path} (bare value)`);
+      console.log('📥 Status  :', res.status, res.statusText);
+      console.log('📥 Value   :', parsed);
+      console.groupEnd();
+      return parsed as unknown as T;
+    } else {
+      throw new Error(`HTTP ${res.status}`);
+    }
+  }
+
+  // Standard { success, message, data } envelope
+  const json = parsed as ApiResponse<T> & { errors?: unknown };
 
   // ── Log the response ─────────────────────────────────────────
   const ok = res.ok && json.success;
@@ -78,17 +127,18 @@ export async function apiFetch<T>(
   console.log('📥 Status  :', res.status, res.statusText);
   console.log('📥 Success :', json.success);
   console.log('📥 Message :', json.message);
-  if ((json as any).errors) console.warn('📥 Errors  :', (json as any).errors);
+  if (json.errors) console.warn('📥 Errors  :', json.errors);
   console.log('📥 Data    :', json.data);
   console.log('📥 Full    :', json);
   console.groupEnd();
 
   if (!ok) {
     const errMsg = json.message
-      || ((json as any).errors ? JSON.stringify((json as any).errors) : null)
+      || (json.errors ? JSON.stringify(json.errors) : null)
       || `HTTP ${res.status}`;
     throw new Error(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
   }
 
   return json.data;
+
 }

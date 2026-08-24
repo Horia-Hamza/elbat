@@ -61,8 +61,9 @@ export const AdminSubCategories: React.FC = () => {
       try {
         await subCategoriesApi.deleteSubCategory(id);
         refetch();
-      } catch (err) {
-        alert('حدث خطأ أثناء الحذف');
+      } catch (err: any) {
+        alert('حدث خطأ أثناء الحذف:\n' + (err?.message || 'خطأ غير معروف'));
+        console.error('Delete sub-category error:', err);
       }
     }
   };
