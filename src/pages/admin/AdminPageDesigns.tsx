@@ -49,6 +49,8 @@ const TARGET_TYPE_LABELS: Record<number, { label: string; color: string }> = {
   3: { label: 'صفحة',   color: '#10b981' },
 };
 
+type PreviewDesign = Omit<ApiPageDesign, 'id'>;
+
 // ── Main Component ──────────────────────────────────────────────
 export const AdminPageDesigns: React.FC = () => {
   const { productId } = useParams<{ productId?: string }>();
@@ -60,7 +62,7 @@ export const AdminPageDesigns: React.FC = () => {
   const [designs, setDesigns] = useState<ApiPageDesign[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
-  const [previewDesign, setPreviewDesign] = useState<ApiPageDesign | null>(null);
+  const [previewDesign, setPreviewDesign] = useState<PreviewDesign | null>(null);
 
   // States for row assignments
   const [rowProductIds, setRowProductIds] = useState<Record<number, number>>({});
