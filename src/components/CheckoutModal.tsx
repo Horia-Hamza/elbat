@@ -76,17 +76,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [isCreateAccountOpen, setIsCreateAccountOpen] = useState(false);
 
   // ── Totals ─────────────────────────────────────────────────
+  const totalItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const multiItemDiscount = totalItemCount >= 2 ? 150 : 0;
   const subtotal = cartItems.reduce(
     (sum, item) => sum + (item.product.salePrice ?? item.product.basePrice) * item.quantity,
     0
   );
-  // Use selected zone cost if available, otherwise default 250
-  const shippingFee = selectedZone
-    ? (selectedZone.freeShippingThreshold != null && subtotal >= selectedZone.freeShippingThreshold
-        ? 0
-        : selectedZone.cost)
-    : 250;
-  const total = subtotal + shippingFee;
+  // Always use the zone's actual cost (never override with free-shipping threshold)
+  const shippingFee = selectedZone ? selectedZone.cost : 250;
+  const total = Math.max(0, subtotal - multiItemDiscount) + shippingFee;
 
   // ── Helpers ────────────────────────────────────────────────
   const resolveVariantId = (item: CartItem): number | null => {
@@ -199,6 +197,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       addressLine2:  addressLine2.trim()  || null,
       couponId:      couponCode.trim()    ? 0 : null,
       notes:         notes.trim()         || null,
+      discountAmount: multiItemDiscount > 0 ? multiItemDiscount : null,
       items,
     };
     console.log('🚀 [CheckoutModal] checkoutPayload:', checkoutPayload);
@@ -348,6 +347,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div
               key={i}
               className={`step-node ${step >= i + 1 ? 'active' : ''} ${step > i + 1 ? 'completed' : ''}`}
+              onClick={() => step > i + 1 && setStep(i + 1)}
+              style={{ cursor: step > i + 1 ? 'pointer' : 'default' }}
+              title={step > i + 1 ? `الرجوع إلى ${s.label}` : undefined}
             >
               <div className="step-circle">
                 {step > i + 1 ? <Check size={15} /> : (step === i + 1 ? s.icon : i + 1)}
@@ -372,6 +374,27 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               {error}
             </div>
           )}
+
+          {/* Multi-item Discount Alert Banner */}
+          {multiItemDiscount > 0 ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+              background: '#E8F5E9', border: '1px solid #A5D6A7',
+              borderRadius: 'var(--radius-sm)', padding: '0.65rem 0.9rem',
+              marginBottom: '1rem', color: '#2E7D32', fontSize: '0.85rem', fontWeight: 700,
+            }}>
+              🎉 تهانينا! حصلت على خصم 150 ج.م فوري لشراء قطعتين أو أكثر!
+            </div>
+          ) : totalItemCount === 1 ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+              background: '#FFF8E1', border: '1px solid #FFE082',
+              borderRadius: 'var(--radius-sm)', padding: '0.65rem 0.9rem',
+              marginBottom: '1rem', color: '#F57F17', fontSize: '0.85rem', fontWeight: 600,
+            }}>
+              💡 أضف قطعة أخرى لسلتك للحصول على خصم 150 ج.م فوري!
+            </div>
+          ) : null}
 
           {/* ── Step 1: Personal Info ── */}
           {step === 1 && (
@@ -559,16 +582,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <div>
                     <span style={{ color: 'var(--text-muted)' }}>رسوم الشحن: </span>
                     <strong style={{ color: 'var(--primary)' }}>
-                      {selectedZone.freeShippingThreshold != null && subtotal >= selectedZone.freeShippingThreshold
+                      {selectedZone.cost === 0
                         ? 'مجاني 🎉'
                         : `${selectedZone.cost.toLocaleString()} ج.م`}
                     </strong>
                   </div>
-                  {selectedZone.freeShippingThreshold != null && subtotal < selectedZone.freeShippingThreshold && (
-                    <div style={{ color: 'var(--text-muted)' }}>
-                      شحن مجاني من <strong>{selectedZone.freeShippingThreshold.toLocaleString()} ج.م</strong>
-                    </div>
-                  )}
+
                   <div>
                     <span style={{ color: 'var(--text-muted)' }}>التوصيل خلال: </span>
                     <strong>{selectedZone.estimatedDaysMin}–{selectedZone.estimatedDaysMax} يوم</strong>
@@ -606,7 +625,67 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <Sparkles size={20} style={{ color: 'var(--secondary-hover)' }} /> مراجعة وتأكيد طلبك
               </h3>
 
-              {/* Cu              {/* Items */}
+              {/* Personal data summary */}
+              <div style={{
+                border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                padding: '0.75rem 1rem', marginBottom: '0.75rem',
+                background: '#F8FBFD',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <User size={13} /> بيانات شخصية
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setError(null); setStep(1); }}
+                    style={{
+                      fontSize: '0.75rem', color: 'var(--primary)', background: 'none',
+                      border: '1px solid var(--primary)', borderRadius: '4px',
+                      padding: '2px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px',
+                    }}
+                  >
+                    ✏️ تعديل
+                  </button>
+                </div>
+                <div style={{ fontSize: '0.83rem', color: 'var(--text-main)', lineHeight: 1.7 }}>
+                  {(firstName || lastName) && <div>👤 {firstName} {lastName}</div>}
+                  {phone && <div>📞 {phone}</div>}
+                  {email && <div>📧 {email}</div>}
+                </div>
+              </div>
+
+              {/* Shipping address summary */}
+              <div style={{
+                border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                padding: '0.75rem 1rem', marginBottom: '0.75rem',
+                background: '#F8FBFD',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <MapPin size={13} /> عنوان التوصيل
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setError(null); setStep(2); }}
+                    style={{
+                      fontSize: '0.75rem', color: 'var(--primary)', background: 'none',
+                      border: '1px solid var(--primary)', borderRadius: '4px',
+                      padding: '2px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px',
+                    }}
+                  >
+                    ✏️ تعديل
+                  </button>
+                </div>
+                <div style={{ fontSize: '0.83rem', color: 'var(--text-main)', lineHeight: 1.7 }}>
+                  {selectedZone && <div>📍 {selectedZone.name} — شحن: {shippingFee === 0 ? 'مجاني' : `${shippingFee.toLocaleString()} ج.م`}</div>}
+                  {addressLine1 && <div>🏠 {addressLine1}</div>}
+                  {addressLine2 && <div>{addressLine2}</div>}
+                  {city && <div>{city}{state ? ` ، ${state}` : ''}</div>}
+                  {notes && <div style={{ color: 'var(--text-muted)' }}>📝 {notes}</div>}
+                </div>
+              </div>
+
+
               <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '1rem' }}>
                 <h4 style={{ color: 'var(--primary-dark)', marginBottom: '0.75rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', fontSize: '0.9rem' }}>
                   🛒 ملخص المنتجات
@@ -634,9 +713,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 {/* Totals */}
                 {[
                   { label: 'المجموع الفرعي', val: `${subtotal.toLocaleString()} ج.م` },
-                  { label: 'تكلفة الشحن', val: shippingFee === 0 ? 'مجاني 🎉' : `${shippingFee} ج.م` },
+                  ...(multiItemDiscount > 0
+                    ? [{ label: 'خصم شراء قطعتين أو أكثر 🎉', val: `-150 ج.م`, isDiscount: true }]
+                    : []),
+                  { label: 'تكلفة الشحن', val: shippingFee === 0 ? 'مجاني 🎉' : `${shippingFee.toLocaleString()} ج.م` },
                 ].map(r => (
-                  <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.83rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
+                  <div key={r.label} style={{
+                    display: 'flex', justifyContent: 'space-between', fontSize: '0.83rem',
+                    color: (r as any).isDiscount ? '#2E7D32' : 'var(--text-muted)',
+                    fontWeight: (r as any).isDiscount ? 700 : 400,
+                    marginBottom: '0.3rem'
+                  }}>
                     <span>{r.label}:</span><span>{r.val}</span>
                   </div>
                 ))}
@@ -700,7 +787,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               {loading ? (
                 <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> جاري المعالجة...</>
               ) : (
-                <>✅ تأكيد الدفع والطلب</>
+                <>📦 تأكيد الطلب (الدفع عند الاستلام)</>
               )}
             </button>
           )}

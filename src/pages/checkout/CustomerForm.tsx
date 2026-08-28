@@ -117,9 +117,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 {zonesLoading ? 'جاري تحميل المحافظات...' : 'اختار المحافظة'}
               </option>
               {zones.map((z) => (
-                <option key={z.id} value={z.id}>
-                  {z.name}
-                </option>
+                <option key={z.id} value={z.id}>{z.name}</option>
               ))}
             </select>
             <div className="select-chevron">

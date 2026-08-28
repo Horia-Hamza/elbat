@@ -530,7 +530,6 @@ function App() {
               searchQuery={searchQuery}
               onSearchChange={(val) => {
                 setSearchQuery(val);
-                scrollToCatalog();
               }}
               onCartOpen={() => setIsCartOpen(true)}
               showOnlyFavs={showOnlyFavs}

@@ -194,11 +194,42 @@ a {
 
 /* 🚀 تنسيقات المكونات الأساسية */
 
-/* 1. الترويسة Header */
-.main-header {
+/* Sticky Header Wrapper holding Discount Banner + Navigation Header */
+.header-wrapper {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
+  width: 100%;
+}
+
+/* Discount Banner above Header */
+.discount-announcement-bar {
+  background: linear-gradient(90deg, #154660 0%, #236B93 50%, #154660 100%);
+  color: #ffffff;
+  text-align: center;
+  padding: 0.55rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  letter-spacing: 0.2px;
+}
+
+.discount-announcement-bar .highlight-badge {
+  background: #FFD54F;
+  color: #1A4D68;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  margin: 0 3px;
+}
+
+/* 1. الترويسة Header */
+.main-header {
   padding: 1rem 2rem;
   display: flex;
   align-items: center;

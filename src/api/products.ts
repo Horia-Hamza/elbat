@@ -23,8 +23,15 @@ export const productsApi = {
     return apiFetch<PagedResult<ApiProduct>>(`/Product?${query.toString()}`);
   },
 
+  /** Lightweight lookup for autocomplete — GET /Product/GetLookup */
+  getProductLookup: (search: string) =>
+    apiFetch<{ id: number; name: string }[]>(
+      `/Product/GetLookup${search ? `?search=${encodeURIComponent(search)}` : ''}`
+    ),
+
   getProductById: (id: number) => 
     apiFetch<ApiProduct>(`/Product/${id}`),
+
 
   createProduct: (data: {
     name: string;

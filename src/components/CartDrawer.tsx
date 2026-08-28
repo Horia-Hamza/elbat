@@ -39,10 +39,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     return '/logo.png';
   };
 
-  // حساب المجموع الفرعي (للتوافق مع العرض المتبقي في الفوتر)
+  const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const multiItemDiscount = totalQuantity >= 2 ? 150 : 0;
   const subtotal = cartItems.reduce((sum, item) => sum + (item.product.salePrice || item.product.basePrice) * item.quantity, 0);
-  const shippingFee = subtotal > 5000 || subtotal === 0 ? 0 : 250; 
-  const total = subtotal + shippingFee;
+  const total = Math.max(0, subtotal - multiItemDiscount);
 
   return (
     <div className={`drawer-backdrop ${isOpen ? 'open' : ''}`} onClick={onClose}>
@@ -158,20 +158,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           <div className="cart-footer">
             <div className="summary-row">
               <span>المجموع الفرعي:</span>
-              <span>{subtotal} ج.م</span>
+              <span>{subtotal.toLocaleString()} ج.م</span>
             </div>
-            <div className="summary-row">
-              <span>تكلفة الشحن الدولي:</span>
-              <span>{shippingFee === 0 ? 'مجاني' : `${shippingFee} ج.م`}</span>
-            </div>
-            {shippingFee > 0 && (
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.8rem', textAlign: 'center' }}>
-                أضف بقيمة {5000 - subtotal} ج.م إضافية للحصول على شحن دولي مجاني وتخليص جمركي مجاني! ✈️
+            {multiItemDiscount > 0 ? (
+              <div className="summary-row" style={{ color: '#2E7D32', fontWeight: 700 }}>
+                <span>خصم قطعتين أو أكثر:</span>
+                <span>-150 ج.م</span>
+              </div>
+            ) : totalQuantity === 1 ? (
+              <p style={{ fontSize: '0.75rem', color: '#F57F17', margin: '0.4rem 0', textAlign: 'center', background: '#FFF8E1', padding: '5px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                💡 أضف قطعة أخرى لسلتك للحصول على خصم 150 ج.م فوري!
               </p>
-            )}
+            ) : null}
             <div className="summary-row total">
               <span>المجموع الإجمالي:</span>
-              <span>{total} ج.م</span>
+              <span>{total.toLocaleString()} ج.م</span>
             </div>
 
             <button className="checkout-btn" onClick={onCheckoutOpen}>

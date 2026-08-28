@@ -171,6 +171,7 @@ export const AdminOrders: React.FC = () => {
         <table className="admin-table">
           <thead>
             <tr>
+              <th>#ID</th>
               <th>رقم الطلب</th>
               <th>التاريخ</th>
               <th>العميل</th>
@@ -185,17 +186,18 @@ export const AdminOrders: React.FC = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '3rem' }}>جاري التحميل...</td>
+                <td colSpan={10} style={{ textAlign: 'center', padding: '3rem' }}>جاري التحميل...</td>
               </tr>
             ) : filteredOrders.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: 'var(--admin-text-muted)' }}>
+                <td colSpan={10} style={{ textAlign: 'center', padding: '3rem', color: 'var(--admin-text-muted)' }}>
                   لم يتم العثور على أي طلبات.
                 </td>
               </tr>
             ) : (
               filteredOrders.map((order) => (
                 <tr key={order.id}>
+                  <td style={{ fontWeight: 700, color: 'var(--admin-text-muted)', fontSize: '0.82rem' }}>#{order.id}</td>
                   <td style={{ fontWeight: 700, color: 'var(--admin-primary)', direction: 'ltr' }}>{order.orderNumber}</td>
                   <td>{new Date(order.createdAt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                   <td>{order.customerName || <span style={{ color: 'var(--admin-text-muted)' }}>—</span>}</td>

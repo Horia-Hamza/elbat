@@ -33,7 +33,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   const seoData = useMemo(() => {
     if (!product) return {
       title: 'جاري التحميل... | متجر البط',
-      description: 'متجر البط — منتجات مبتكرة للمنزل والعناية الشخصية.',
+      description: 'متجر البط — أحدث صيحات البيجامات وملابس النوم المريحة.',
     };
     const price = product.salePrice ?? product.basePrice;
     const mainImage = product.mainImageUrl

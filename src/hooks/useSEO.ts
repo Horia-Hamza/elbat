@@ -56,7 +56,7 @@ function removeJsonLd() {
 
 export function useSEO({
   title,
-  description = 'متجر البط — وجهتك الأولى لأفضل المنتجات المبتكرة للمنزل والعناية الشخصية. شحن سريع لجميع أنحاء مصر.',
+  description = 'متجر البط — وجهتك الأولى لأفضل البيجامات وملابس النوم المريحة. شحن سريع لجميع أنحاء مصر.',
   image = DEFAULT_IMAGE,
   url,
   type = 'website',
@@ -70,21 +70,30 @@ export function useSEO({
     // Document title
     document.title = fullTitle;
 
-    // Basic meta
+    // Standard Meta Tags
     setMeta('description', description);
-    setMeta('robots', noindex ? 'noindex, nofollow' : 'index, follow');
+    if (noindex) {
+      setMeta('robots', 'noindex, nofollow');
+    } else {
+      setMeta('robots', 'index, follow');
+    }
 
-    // Canonical
-    setLink('canonical', canonicalUrl);
+    // Canonical URL
+    let linkCanonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!linkCanonical) {
+      linkCanonical = document.createElement('link');
+      linkCanonical.rel = 'canonical';
+      document.head.appendChild(linkCanonical);
+    }
+    linkCanonical.href = canonicalUrl;
 
     // Open Graph
     setMeta('og:title', fullTitle, true);
     setMeta('og:description', description, true);
     setMeta('og:image', image, true);
     setMeta('og:url', canonicalUrl, true);
-    setMeta('og:type', type === 'product' ? 'product' : type === 'article' ? 'article' : 'website', true);
+    setMeta('og:type', type, true);
     setMeta('og:site_name', SITE_NAME, true);
-    setMeta('og:locale', 'ar_EG', true);
 
     // Twitter Card
     setMeta('twitter:card', 'summary_large_image');
@@ -101,7 +110,7 @@ export function useSEO({
 
     // Cleanup: restore defaults when component unmounts
     return () => {
-      document.title = `${SITE_NAME} | منتجات مبتكرة للمنزل والعناية الشخصية`;
+      document.title = `${SITE_NAME} | أحدث صيحات البيجامات وملابس النوم المريحة`;
     };
   }, [title, description, image, url, type, jsonLd, noindex]);
 }
