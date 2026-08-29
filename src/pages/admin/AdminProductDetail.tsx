@@ -5,14 +5,13 @@ import {
   CheckCircle, XCircle, ShoppingBag, Calendar, Hash,
   Bot, Copy, Check, Wand2, Send, BarChart2, Trash2,
 } from 'lucide-react';
-import { productsApi, inventoryApi, productImagesApi } from '../../api/products';
+import { productsApi, productImagesApi } from '../../api/products';
 import { productVariantsApi } from '../../api/productVariants';
 import { pageDesignsApi } from '../../api/pageDesigns';
 import { IMAGES_BASE_URL } from '../../api/client';
 import { apiFetch } from '../../api/client';
 import type { ApiProduct, ProductVariant, VariantType } from '../../types/api';
 import { VARIANT_TYPE_LABELS as VARIANT_LABELS } from '../../types/api';
-import type { ApiInventory } from '../../api/products';
 
 interface AdminProductDetailProps {
   productId: number;
@@ -21,7 +20,7 @@ interface AdminProductDetailProps {
   initialTab?: TabKey;
 }
 
-type TabKey = 'info' | 'images' | 'videos' | 'design' | 'ai' | 'create-design' | 'inventory' | 'variants';
+type TabKey = 'info' | 'images' | 'videos' | 'design' | 'ai' | 'create-design' | 'variants';
 
 const BASE = IMAGES_BASE_URL;
 
@@ -298,29 +297,7 @@ ${buildAiContext()}
     }
   };
 
-  /* ── Submit inventory ── */
-  const handleInventorySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setInvSaving(true);
-    setInvError(null);
-    setInvSuccess(false);
-    try {
-      const result = await inventoryApi.create({
-        productId,
-        variantId: invForm.variantId ? parseInt(invForm.variantId) : null,
-        quantity: invForm.quantity,
-        lowStockThreshold: invForm.lowStockThreshold,
-        trackInventory: invForm.trackInventory,
-        allowBackorder: invForm.allowBackorder,
-      });
-      setInventory(result);
-      setInvSuccess(true);
-    } catch (err: any) {
-      setInvError(err?.message || 'حدث خطأ أثناء إضافة المخزون');
-    } finally {
-      setInvSaving(false);
-    }
-  };
+
 
   /* ── Set main image ── */
   const handleSetMainImage = async (imageId: number) => {
@@ -436,7 +413,6 @@ ${buildAiContext()}
     { key: 'videos',        label: `الفيديو (${videos.length})`, icon: <Video size={13} /> },
     { key: 'design',        label: 'التصميم الحالي', icon: <Palette size={13} /> },
     { key: 'variants',      label: `🎨 المتغيرات (${variants.length})`, icon: <Layers size={13} /> },
-    { key: 'inventory',     label: '📊 المخزون',     icon: <BarChart2 size={13} /> },
     { key: 'ai',            label: '🤖 سياق AI',     icon: <Bot size={13} /> },
     { key: 'create-design', label: '🎨 تصميم جديد',  icon: <Wand2 size={13} /> },
   ];
@@ -1208,106 +1184,7 @@ ${buildAiContext()}
               </div>
             )}
 
-            {/* ══════════════ TAB: INVENTORY ══════════════ */}
-            {activeTab === 'inventory' && (
-              <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <form onSubmit={handleInventorySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  
-                  {/* Current stats */}
-                  {inventory && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.6rem', marginBottom: '0.5rem' }}>
-                      {[
-                        { label: 'الكمية الكلية', value: inventory.quantity, color: 'var(--admin-text-main)' },
-                        { label: 'محجوز', value: inventory.reservedQuantity, color: '#f59e0b' },
-                        { label: 'متاح', value: inventory.availableQuantity, color: '#22c55e' },
-                      ].map(stat => (
-                        <div key={stat.label} style={{ background: 'var(--admin-bg-dark)', borderRadius: 8, padding: '0.6rem 0.75rem', textAlign: 'center' }}>
-                          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: stat.color }}>{stat.value}</div>
-                          <div style={{ fontSize: '0.68rem', color: 'var(--admin-text-muted)', marginTop: 2 }}>{stat.label}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
 
-                  {/* Quantity */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div>
-                      <label style={labelStyle}>الكمية (quantity) *</label>
-                      <input
-                        type="number" min={0} required
-                        style={inputStyle}
-                        value={invForm.quantity}
-                        onChange={e => setInvForm(f => ({ ...f, quantity: parseInt(e.target.value) || 0 }))}
-                      />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>حد المخزون المنخفض</label>
-                      <input
-                        type="number" min={0}
-                        style={inputStyle}
-                        value={invForm.lowStockThreshold}
-                        onChange={e => setInvForm(f => ({ ...f, lowStockThreshold: parseInt(e.target.value) || 0 }))}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Variant ID (optional) */}
-                  <div>
-                    <label style={labelStyle}>Variant ID (اختياري)</label>
-                    <input
-                      type="number" min={0}
-                      style={inputStyle}
-                      placeholder="0 = بدون متغير"
-                      value={invForm.variantId}
-                      onChange={e => setInvForm(f => ({ ...f, variantId: e.target.value }))}
-                    />
-                  </div>
-
-                  {/* Toggles */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', background: 'var(--admin-bg-dark)', padding: '1rem', borderRadius: 8 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={invForm.trackInventory}
-                        onChange={e => setInvForm(f => ({ ...f, trackInventory: e.target.checked }))}
-                      />
-                      <span style={{ fontSize: '0.88rem' }}>تتبع المخزون (trackInventory)</span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={invForm.allowBackorder}
-                        onChange={e => setInvForm(f => ({ ...f, allowBackorder: e.target.checked }))}
-                      />
-                      <span style={{ fontSize: '0.88rem' }}>السماح بالطلب عند نفاد المخزون (allowBackorder)</span>
-                    </label>
-                  </div>
-
-                  {/* Feedback */}
-                  {invError && (
-                    <div style={{ background: 'rgba(239,68,68,.1)', border: '1px solid var(--admin-danger)', borderRadius: 8, padding: '0.7rem 1rem', color: 'var(--admin-danger)', fontSize: '0.85rem' }}>
-                      ❌ {invError}
-                    </div>
-                  )}
-                  {invSuccess && (
-                    <div style={{ background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.3)', borderRadius: 8, padding: '0.7rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <CheckCircle size={18} style={{ color: '#22c55e', flexShrink: 0 }} />
-                      <span style={{ color: '#22c55e', fontWeight: 600 }}>تم تحديث المخزون بنجاح! ✅</span>
-                    </div>
-                  )}
-
-                  {/* Submit */}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                    <button type="submit" className="admin-btn" disabled={invSaving}
-                      style={{ background: invSaving ? undefined : 'linear-gradient(135deg,#22c55e,#16a34a)', border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      {invSaving
-                        ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }}/> جاري الحفظ...</>
-                        : '✔ حفظ المخزون'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
 
             {/* ── Footer ── */}
             <div style={{

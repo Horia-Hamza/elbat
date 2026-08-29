@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom';
 import { Header } from './components/Header';
 import { CartDrawer } from './components/CartDrawer';
+import { WishlistDrawer } from './components/WishlistDrawer';
 import type { CartItem } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
 import { Toast } from './components/Toast';
@@ -11,6 +12,7 @@ import { HomePage } from './pages/HomePage';
 import { ProductDetailsPage } from './pages/ProductDetailsPage';
 import { PaymentSuccessPage } from './pages/PaymentSuccessPage';
 import { SubCategoryPage } from './pages/SubCategoryPage';
+import { ProductsPage } from './pages/ProductsPage';
 
 // Lazy loaded Auth pages
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
@@ -113,6 +115,7 @@ function App() {
   const { subCategories } = useSubCategories();
 
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const location = useLocation();
@@ -224,32 +227,37 @@ function App() {
     if (!token) return;
     try {
       const decodedUserId = getUserIdFromToken();
+      if (!decodedUserId || decodedUserId === 'string') return;
       const items = await wishlistApi.getWishlistByUser(decodedUserId);
       if (Array.isArray(items)) {
         const serverProductIds = items.map(item => String(item.productId));
-        setFavorites((prev) => {
-          const hasNew = serverProductIds.some(id => !prev.includes(id));
-          if (hasNew) {
-            return Array.from(new Set([...prev, ...serverProductIds]));
-          }
-          return prev;
-        });
+        setFavorites((prev) => Array.from(new Set([...prev, ...serverProductIds])));
       }
     } catch (e) {
       console.error('Error fetching wishlist from server:', e);
     }
   };
 
+  // Sync and fetch ONCE when user is logged in or on auth storage change (no 5s polling loop)
   useEffect(() => {
-    syncCartToBackend();
-    syncWishlistToBackend();
-    fetchWishlistFromServer();
-    const interval = setInterval(() => {
+    const token = localStorage.getItem('elbat_token');
+    if (token) {
       syncCartToBackend();
       syncWishlistToBackend();
       fetchWishlistFromServer();
-    }, 5000);
-    return () => clearInterval(interval);
+    }
+
+    const handleStorage = () => {
+      const currentToken = localStorage.getItem('elbat_token');
+      if (currentToken) {
+        syncCartToBackend();
+        syncWishlistToBackend();
+        fetchWishlistFromServer();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   // إرسال تنبيه منبثق جديد
@@ -413,44 +421,46 @@ function App() {
   };
 
   // التحكم في المفضلة
-  const handleToggleFavorite = (id: string, e: React.MouseEvent) => {
+  const handleToggleFavorite = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const isFav = favorites.includes(id);
+    const numId = Number(id);
+
     if (isFav) {
       showToast(`تمت الإزالة من المفضلة.`, 'error');
       setFavorites((prev) => prev.filter((favId) => favId !== id));
+
+      const token = localStorage.getItem('elbat_token');
+      if (token) {
+        try {
+          const decodedUserId = getUserIdFromToken();
+          const items = await wishlistApi.getWishlistByUser(decodedUserId);
+          if (Array.isArray(items)) {
+            const match = items.find((i) => i.productId === numId);
+            if (match && match.id) {
+              await wishlistApi.removeFromWishlist(match.id);
+            }
+          }
+        } catch (err) {
+          console.error('Error removing item from wishlist API:', err);
+        }
+      }
     } else {
       showToast(`تمت الإضافة إلى المفضلة!`);
-
-      // Add to offline wishlist queue in localStorage under the key 'wishlist'
-      try {
-        const currentUserId = localStorage.getItem('elbat_token') ? getUserIdFromToken() : 'string';
-        const localWishlistStr = localStorage.getItem('wishlist');
-        let localWishlistArray: any[] = [];
-        if (localWishlistStr) {
-          localWishlistArray = JSON.parse(localWishlistStr);
-        }
-        if (!Array.isArray(localWishlistArray)) {
-          localWishlistArray = [];
-        }
-
-        // Avoid duplicate entries in the queue
-        const exists = localWishlistArray.some(item => item.productId === Number(id));
-        if (!exists) {
-          localWishlistArray.push({
-            userId: currentUserId,
-            productId: Number(id)
-          });
-          localStorage.setItem('wishlist', JSON.stringify(localWishlistArray));
-        }
-      } catch (err) {
-        console.error('Error writing wishlist to localStorage:', err);
-      }
-
-      // Trigger immediate sync
-      syncWishlistToBackend();
-
       setFavorites((prev) => [...prev, id]);
+
+      const token = localStorage.getItem('elbat_token');
+      if (token) {
+        try {
+          const decodedUserId = getUserIdFromToken();
+          await wishlistApi.addToWishlist({
+            userId: decodedUserId,
+            productId: numId,
+          });
+        } catch (err) {
+          console.error('Error adding item to wishlist API:', err);
+        }
+      }
     }
   };
 
@@ -534,8 +544,7 @@ function App() {
               onCartOpen={() => setIsCartOpen(true)}
               showOnlyFavs={showOnlyFavs}
               onToggleFavs={() => {
-                setShowOnlyFavs(!showOnlyFavs);
-                scrollToCatalog();
+                setIsWishlistOpen(true);
               }}
               subCategories={subCategories}
               activeSubCategory={activeSubCategory}
@@ -595,6 +604,16 @@ function App() {
                   path="/subcategory/:id"
                   element={
                     <SubCategoryPage
+                      favorites={favorites}
+                      handleToggleFavorite={handleToggleFavorite}
+                      handleQuickAddToCart={handleQuickAddToCart}
+                    />
+                  }
+                />
+                <Route
+                  path="/products"
+                  element={
+                    <ProductsPage
                       favorites={favorites}
                       handleToggleFavorite={handleToggleFavorite}
                       handleQuickAddToCart={handleQuickAddToCart}
@@ -777,6 +796,14 @@ function App() {
                 setIsCartOpen(false);
                 setIsCheckoutOpen(true);
               }}
+            />
+
+            <WishlistDrawer
+              isOpen={isWishlistOpen}
+              onClose={() => setIsWishlistOpen(false)}
+              favorites={favorites}
+              onToggleFavorite={handleToggleFavorite}
+              onQuickAddToCart={handleQuickAddToCart}
             />
 
             <CheckoutModal

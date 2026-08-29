@@ -1228,20 +1228,22 @@ a {
   background-color: var(--secondary);
   color: var(--primary-dark);
   border: none;
-  width: 42px;
-  height: 42px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 700;
   border-radius: var(--radius-md);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: var(--transition);
   box-shadow: 0 4px 10px rgba(255, 213, 79, 0.3);
+  white-space: nowrap;
 }
 
 .add-to-cart-btn:hover {
   background-color: var(--secondary-hover);
-  transform: scale(1.1);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-glow);
 }
 

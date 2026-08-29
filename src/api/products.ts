@@ -29,6 +29,25 @@ export const productsApi = {
       `/Product/GetLookup${search ? `?search=${encodeURIComponent(search)}` : ''}`
     ),
 
+  /** Filter products with POST payload — POST /Product/filter */
+  filterProducts: (data: {
+    pageNumber?: number;
+    pageSize?: number;
+    subCategoryId?: number;
+    categoryId?: number;
+    brandId?: number;
+    isActive?: boolean;
+    inStock?: boolean;
+    searchTerm?: string;
+    sortBy?: string;
+    sortDescending?: boolean;
+  }) =>
+    apiFetch<PagedResult<ApiProduct>>('/Product/filter', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+
   getProductById: (id: number) => 
     apiFetch<ApiProduct>(`/Product/${id}`),
 
@@ -232,16 +251,6 @@ export interface InventoryCreateDto {
 }
 
 export const inventoryApi = {
-  /**
-   * Add or update inventory for a product.
-   * POST /api/Inventory
-   */
-  create: (data: InventoryCreateDto) =>
-    apiFetch<ApiInventory>('/Inventory', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
   /**
    * Delete an inventory record by ID.
    * DELETE /api/Inventory/{id}

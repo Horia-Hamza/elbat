@@ -3,7 +3,6 @@ import { Hero } from '../components/Hero';
 import { Categories } from '../components/Categories';
 import { ProductCard } from '../components/ProductCard';
 import type { ApiProduct } from '../types/api';
-import { useCategories } from '../hooks/useCategories';
 import { useProducts } from '../hooks/useProducts';
 import { HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -58,19 +57,24 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [hoveredDuck, setHoveredDuck] = useState<number | null>(null);
 
-  const { categories } = useCategories();
+  // Local subcategory state for home page filtering so nav bar is not affected
+  const [homeSubCategory, setHomeSubCategory] = useState<string>('all');
 
   const { products, loading: productsLoading } = useProducts({
     pageNumber: 1,
     pageSize: 24,
-    categoryId: activeCategory !== 'all' ? Number(activeCategory) : null,
-    subCategoryId: activeSubCategory !== 'all' ? Number(activeSubCategory) : null,
+    categoryId: activeCategory !== 'all' ? Number(activeCategory) : undefined,
+    subCategoryId: homeSubCategory !== 'all' ? Number(homeSubCategory) : undefined,
+    isActive: true,
+    inStock: true,
   });
 
   const { products: latestProductsRaw } = useProducts({
     pageNumber: 1,
     pageSize: 12,
     sortDescending: true,
+    isActive: true,
+    inStock: true,
   });
 
   const latestProducts = latestProductsRaw.filter(p => p.isActive).slice(0, 3);
@@ -182,7 +186,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     const matchesCategory = activeCategory === 'all' || (prodCatId !== null && prodCatId.toString() === activeCategory);
 
     // Subcategory check
-    const matchesSubCategory = activeSubCategory === 'all' || product.subCategoryId.toString() === activeSubCategory;
+    const matchesSubCategory = homeSubCategory === 'all' || product.subCategoryId.toString() === homeSubCategory;
 
     // Favorites check
     const matchesFav = !showOnlyFavs || favorites.includes(product.id.toString());
@@ -210,9 +214,9 @@ export const HomePage: React.FC<HomePageProps> = ({
       <div id="explore-products" style={{ scrollMarginTop: '100px' }}>
         <Categories
           subCategories={subCategories}
-          activeSubCategory={activeSubCategory}
+          activeSubCategory={homeSubCategory}
           onSubCategorySelect={(key) => {
-            setActiveSubCategory(key);
+            setHomeSubCategory(key);
             setActiveCategory('all');
             setShowOnlyFavs(false);
           }}
@@ -223,9 +227,9 @@ export const HomePage: React.FC<HomePageProps> = ({
             <h2 className="section-title">
               {showOnlyFavs
                 ? 'المنتجات المفضلة لديك'
-                : activeSubCategory === 'all'
-                  ? (activeCategory === 'all' ? 'منتجات البط المميزه' : categories.find(c => c.id.toString() === activeCategory)?.name || 'المنتجات')
-                  : subCategories.find(sc => sc.id.toString() === activeSubCategory)?.name || 'المنتجات'}
+                : homeSubCategory === 'all'
+                  ? 'منتجات البط المميزه'
+                  : subCategories.find(sc => sc.id.toString() === homeSubCategory)?.name || 'المنتجات'}
             </h2>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               تم العثور على {filteredProducts.length} منتج

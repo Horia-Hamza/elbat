@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { CheckCircle } from 'lucide-react';
 import OfferHeader from './OfferHeader';
 import PajamaSelector from './PajamaSelector';
 import SelectedItems from './SelectedItems';
@@ -273,20 +274,17 @@ const BundleCheckoutPage: React.FC = () => {
     return (
       <div className="checkout-success-page" dir="rtl">
         <div className="checkout-success-card">
-          <div className="success-icon-wrap">
-            <span className="success-icon-emoji">🎉</span>
-          </div>
-          <h1 className="success-title">تم استلام طلبك بنجاح!</h1>
+          <h1 className="success-title" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <CheckCircle size={30} style={{ color: '#2e7d32', flexShrink: 0 }} />
+            <span>تم استلام طلبك بنجاح!</span>
+          </h1>
           <p className="success-subtitle">
             شكراً{' '}
             {customerDetails.firstName
               ? `${customerDetails.firstName} ${customerDetails.lastName}`
               : 'عزيزي العميل'}
-            ! هنتواصل معاك في أقرب وقت لتأكيد الطلب وترتيب الشحن. 📦
+            ! سيتم التواصل معك قريباً لتأكيد الطلب وترتيب الشحن. 📞📦
           </p>
-          {orderReference && (
-            <p className="success-order-ref">رقم الطلب: <strong>{orderReference}</strong></p>
-          )}
           <div className="success-order-items">
             {(selectedPajamas.filter(Boolean) as SelectedPajama[]).map((item, i) => (
               <div key={i} className="success-order-item">

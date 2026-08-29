@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useProducts } from '../../hooks/useProducts';
 import { useBrands } from '../../hooks/useBrands';
 import { useSubCategories } from '../../hooks/useSubCategories';
-import { productsApi, productImagesApi, productVideosApi, inventoryApi } from '../../api/products';
-import type { ApiInventory } from '../../api/products';
+import { productsApi, productImagesApi, productVideosApi } from '../../api/products';
 import { pageDesignsApi } from '../../api/pageDesigns';
 import { IMAGES_BASE_URL } from '../../api/client';
 import { Plus, Edit, Trash2, X, ImagePlus, CheckCircle, XCircle, Loader, Palette, Video, Eye, BarChart2, Image as ImageIcon, Star } from 'lucide-react';
@@ -55,22 +54,7 @@ export const AdminProducts: React.FC = () => {
   const [viewingProductId, setViewingProductId] = useState<number | null>(null);
 
   // Inventory modal state
-  const [inventoryModal, setInventoryModal] = useState<{
-    open: boolean;
-    productId: number | null;
-    productName: string;
-  }>({ open: false, productId: null, productName: '' });
-  const [invForm, setInvForm] = useState({
-    quantity: 100,
-    lowStockThreshold: 5,
-    trackInventory: true,
-    allowBackorder: false,
-    variantId: '' as string, // empty = no variant
-  });
-  const [invSaving, setInvSaving] = useState(false);
-  const [invSuccess, setInvSuccess] = useState(false);
-  const [invError, setInvError] = useState<string | null>(null);
-  const [invResult, setInvResult] = useState<ApiInventory | null>(null);
+
 
   const [imageEntries, setImageEntries] = useState<ImageEntry[]>([]);
   const [mainImageIndex, setMainImageIndex] = useState(0);
@@ -186,38 +170,7 @@ export const AdminProducts: React.FC = () => {
     }
   };
 
-  const openInventoryModal = (product: ApiProduct) => {
-    setInventoryModal({ open: true, productId: product.id, productName: product.name });
-    setInvForm({ quantity: 100, lowStockThreshold: 5, trackInventory: true, allowBackorder: false, variantId: '' });
-    setInvSuccess(false);
-    setInvError(null);
-    setInvResult(null);
-  };
 
-  const handleInventorySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inventoryModal.productId) return;
-    setInvSaving(true);
-    setInvError(null);
-    setInvSuccess(false);
-    try {
-      const result = await inventoryApi.create({
-        productId: inventoryModal.productId,
-        variantId: invForm.variantId ? parseInt(invForm.variantId) : null,
-        quantity: invForm.quantity,
-        lowStockThreshold: invForm.lowStockThreshold,
-        trackInventory: invForm.trackInventory,
-        allowBackorder: invForm.allowBackorder,
-      });
-      setInvResult(result);
-      setInvSuccess(true);
-      refetch();
-    } catch (err: any) {
-      setInvError(err?.message || 'حدث خطأ أثناء إضافة المخزون');
-    } finally {
-      setInvSaving(false);
-    }
-  };
 
 
   const handleSubmitDetails = async (e: React.FormEvent) => {
@@ -498,18 +451,9 @@ export const AdminProducts: React.FC = () => {
                   </td>
                   <td style={{ fontWeight: 'bold' }}>{product.basePrice} ج.م</td>
                   <td>
-                    <button
-                      onClick={() => openInventoryModal(product)}
-                      className={`admin-badge ${product.inStock ? 'success' : 'neutral'}`}
-                      style={{
-                        cursor: 'pointer', border: 'none', outline: 'none',
-                        opacity: product.inStock ? 1 : 0.7,
-                        transition: 'opacity 0.2s',
-                      }}
-                      title="انقر لإدارة المخزون"
-                    >
+                    <span className={`admin-badge ${product.inStock ? 'success' : 'neutral'}`}>
                       {product.inStock ? 'متوفر' : 'نفذ'}
-                    </button>
+                    </span>
                   </td>
                   <td>
                     {product.isActive
@@ -553,15 +497,7 @@ export const AdminProducts: React.FC = () => {
                       >
                         <Palette size={16} />
                       </button>
-                      {/* Inventory */}
-                      <button
-                        className="admin-icon-btn"
-                        title="إدارة المخزون"
-                        style={{ color: '#22c55e' }}
-                        onClick={() => openInventoryModal(product)}
-                      >
-                        <BarChart2 size={16} />
-                      </button>
+
                       {/* Delete */}
                       <button
                         className="admin-icon-btn"
@@ -580,204 +516,7 @@ export const AdminProducts: React.FC = () => {
         </table>
       </div>
 
-      {/* ── Inventory Modal ── */}
-      {inventoryModal.open && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1050,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          backdropFilter: 'blur(2px)',
-        }}>
-          <div style={{
-            backgroundColor: 'var(--admin-bg-panel)',
-            borderRadius: 14,
-            padding: '2rem',
-            width: '100%',
-            maxWidth: 480,
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
-            animation: 'fadeScaleIn 0.2s ease',
-          }}>
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <div>
-                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <BarChart2 size={20} style={{ color: '#22c55e' }} />
-                  إدارة المخزون
-                </h3>
-                <p style={{ margin: '0.3rem 0 0', fontSize: '0.8rem', color: 'var(--admin-text-muted)' }}>
-                  منتج: <strong style={{ color: 'var(--admin-primary)' }}>{inventoryModal.productName}</strong> (#{inventoryModal.productId})
-                </p>
-              </div>
-              <button
-                onClick={() => setInventoryModal(m => ({ ...m, open: false }))}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-text-muted)' }}
-              >
-                <X size={20} />
-              </button>
-            </div>
 
-            {/* Form */}
-            <form onSubmit={handleInventorySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-
-              {/* Quantity */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label style={labelStyle}>الكمية (quantity) *</label>
-                  <input
-                    type="number" min={0} required
-                    style={inputStyle}
-                    value={invForm.quantity}
-                    onChange={e => setInvForm(f => ({ ...f, quantity: parseInt(e.target.value) || 0 }))}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>حد المخزون المنخفض</label>
-                  <input
-                    type="number" min={0}
-                    style={inputStyle}
-                    value={invForm.lowStockThreshold}
-                    onChange={e => setInvForm(f => ({ ...f, lowStockThreshold: parseInt(e.target.value) || 0 }))}
-                  />
-                </div>
-              </div>
-
-              {/* Variant ID (optional) */}
-              <div>
-                <label style={labelStyle}>Variant ID (اختياري — اتركه فارغًا إن لم يكن هناك متغير)</label>
-                <input
-                  type="number" min={0}
-                  style={inputStyle}
-                  placeholder="0 = بدون متغير"
-                  value={invForm.variantId}
-                  onChange={e => setInvForm(f => ({ ...f, variantId: e.target.value }))}
-                />
-              </div>
-
-              {/* Toggles */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', background: 'var(--admin-bg-dark)', padding: '1rem', borderRadius: 8 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={invForm.trackInventory}
-                    onChange={e => setInvForm(f => ({ ...f, trackInventory: e.target.checked }))}
-                  />
-                  <span style={{ fontSize: '0.88rem' }}>تتبع المخزون (trackInventory)</span>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={invForm.allowBackorder}
-                    onChange={e => setInvForm(f => ({ ...f, allowBackorder: e.target.checked }))}
-                  />
-                  <span style={{ fontSize: '0.88rem' }}>السماح بالطلب عند نفاد المخزون (allowBackorder)</span>
-                </label>
-              </div>
-
-              {/* Payload preview */}
-              <details style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>
-                <summary style={{ cursor: 'pointer', marginBottom: '0.4rem' }}>معاينة البيانات المرسلة</summary>
-                <pre style={{ background: 'var(--admin-bg-dark)', padding: '0.6rem 0.8rem', borderRadius: 6, overflow: 'auto', fontSize: '0.72rem' }}>
-{JSON.stringify({
-  productId: inventoryModal.productId,
-  variantId: invForm.variantId ? parseInt(invForm.variantId) : null,
-  quantity: invForm.quantity,
-  lowStockThreshold: invForm.lowStockThreshold,
-  trackInventory: invForm.trackInventory,
-  allowBackorder: invForm.allowBackorder,
-}, null, 2)}
-                </pre>
-              </details>
-
-              {/* Feedback */}
-              {invError && (
-                <div style={{ background: 'rgba(239,68,68,.1)', border: '1px solid var(--admin-danger)', borderRadius: 8, padding: '0.7rem 1rem', color: 'var(--admin-danger)', fontSize: '0.85rem' }}>
-                  ❌ {invError}
-                </div>
-              )}
-              {invSuccess && invResult && (
-                <div style={{ background: 'rgba(34,197,94,.06)', border: '1px solid rgba(34,197,94,.35)', borderRadius: 10, padding: '1rem' }}>
-
-                  {/* Header */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                    <CheckCircle size={18} style={{ color: '#22c55e', flexShrink: 0 }} />
-                    <span style={{ color: '#22c55e', fontWeight: 700, fontSize: '0.95rem' }}>تم حفظ بيانات المخزون بنجاح! ✅</span>
-                    <span style={{ marginRight: 'auto', fontSize: '0.72rem', color: 'var(--admin-text-muted)' }}>ID: #{invResult.id}</span>
-                  </div>
-
-                  {/* Quantity stats grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.6rem', marginBottom: '0.75rem' }}>
-                    {[
-                      { label: 'الكمية الكلية', value: invResult.quantity, color: 'var(--admin-text-main)' },
-                      { label: 'محجوز', value: invResult.reservedQuantity, color: '#f59e0b' },
-                      { label: 'متاح', value: invResult.availableQuantity, color: '#22c55e' },
-                    ].map(stat => (
-                      <div key={stat.label} style={{
-                        background: 'var(--admin-bg-dark)', borderRadius: 8,
-                        padding: '0.6rem 0.75rem', textAlign: 'center',
-                      }}>
-                        <div style={{ fontSize: '1.35rem', fontWeight: 800, color: stat.color }}>{stat.value}</div>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--admin-text-muted)', marginTop: 2 }}>{stat.label}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Threshold + flags */}
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', padding: '3px 8px', borderRadius: 6, background: 'var(--admin-bg-dark)' }}>
-                      حد منخفض: {invResult.lowStockThreshold}
-                    </span>
-                    <span style={{
-                      fontSize: '0.75rem', padding: '3px 9px', borderRadius: 6, fontWeight: 600,
-                      background: invResult.isLowStock ? 'rgba(245,158,11,.15)' : 'rgba(34,197,94,.12)',
-                      color: invResult.isLowStock ? '#f59e0b' : '#22c55e',
-                    }}>
-                      {invResult.isLowStock ? '⚠ مخزون منخفض' : '✓ مخزون كافٍ'}
-                    </span>
-                    <span style={{
-                      fontSize: '0.75rem', padding: '3px 9px', borderRadius: 6, fontWeight: 600,
-                      background: invResult.isOutOfStock ? 'rgba(239,68,68,.12)' : 'rgba(34,197,94,.12)',
-                      color: invResult.isOutOfStock ? '#ef4444' : '#22c55e',
-                    }}>
-                      {invResult.isOutOfStock ? '✗ نفذ' : '✓ في المخزون'}
-                    </span>
-                    <span style={{
-                      fontSize: '0.75rem', padding: '3px 9px', borderRadius: 6, fontWeight: 600,
-                      background: invResult.allowBackorder ? 'rgba(99,102,241,.12)' : 'rgba(156,163,175,.12)',
-                      color: invResult.allowBackorder ? '#6366f1' : '#9ca3af',
-                    }}>
-                      {invResult.allowBackorder ? '↩ Backorder مسموح' : 'Backorder ممنوع'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                <button
-                  type="button"
-                  className="admin-btn outline"
-                  onClick={() => setInventoryModal(m => ({ ...m, open: false }))}
-                  disabled={invSaving}
-                >
-                  {invSuccess ? 'إغلاق' : 'إلغاء'}
-                </button>
-                {!invSuccess && (
-                  <button type="submit" className="admin-btn" disabled={invSaving}
-                    style={{ background: invSaving ? undefined : 'linear-gradient(135deg,#22c55e,#16a34a)', border: 'none' }}
-                  >
-                    {invSaving
-                      ? <><Loader size={15} style={{ display: 'inline', marginLeft: 6, animation: 'spin 1s linear infinite' }} />جاري الحفظ...</>
-                      : '✔ حفظ المخزون'}
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {isModalOpen && (
         <div style={{

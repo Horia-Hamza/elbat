@@ -222,51 +222,52 @@ export const PaymentSuccessPage: React.FC = () => {
           />
         </div>
 
-        {/* Status icon */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', animation: 'iconPop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.35s both' }}>
-          {isSuccess
-            ? <CheckCircle size={68} style={{ color: '#43A047', filter: 'drop-shadow(0 4px 18px rgba(76,175,80,0.45))' }} />
-            : <XCircle size={68} style={{ color: '#E53935', filter: 'drop-shadow(0 4px 18px rgba(244,67,54,0.4))' }} />
-          }
-        </div>
-
-        {/* Title */}
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: statusColor, margin: '0 0 0.4rem', lineHeight: 1.3 }}>
-          {isPending
-            ? '⏳ الطلب قيد المعالجة'
-            : isSuccess
-              ? (isCod ? 'تم استلام طلبك بنجاح!' : 'تم الدفع بنجاح!')
-              : '❌ فشلت عملية الطلب'}
+        {/* Title with icon beside it */}
+        <h1 style={{
+          fontSize: '1.75rem',
+          fontWeight: 900,
+          color: statusColor,
+          margin: '0 0 0.6rem',
+          lineHeight: 1.3,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '10px',
+        }}>
+          {isSuccess ? (
+            <CheckCircle size={32} style={{ color: '#43A047', flexShrink: 0 }} />
+          ) : (
+            <XCircle size={32} style={{ color: '#E53935', flexShrink: 0 }} />
+          )}
+          <span>
+            {isPending
+              ? '⏳ الطلب قيد المعالجة'
+              : isSuccess
+                ? (isCod ? 'تم استلام طلبك بنجاح!' : 'تم الدفع بنجاح!')
+                : 'فشلت عملية الطلب'}
+          </span>
         </h1>
 
-        <p style={{ color: '#666', fontSize: '0.93rem', margin: '0 0 1.5rem', lineHeight: 1.75 }}>
+        <p style={{ color: '#666', fontSize: '0.93rem', margin: '0 0 1.25rem', lineHeight: 1.75 }}>
           {isPending
             ? 'جاري معالجة الطلب، سيتم التحديث تلقائياً.'
             : isSuccess
-              ? (isCod ? 'شكراً لتسوقك! تم تأكيد طلبك وسيتم الدفع نقداً عند الاستلام.' : 'شكراً لتسوقك! طلبك قيد التجهيز وسيصلك قريباً.')
+              ? 'شكراً لتسوقك! تم استلام طلبك بنجاح وسيتم التواصل معك لتأكيد الطلب.'
               : errorOccurred
                 ? 'حدث خطأ أثناء معالجة الطلب. يرجى المحاولة مجدداً.'
                 : 'لم يكتمل الطلب. يمكنك المحاولة مجدداً.'}
         </p>
 
+
+
         {/* ── Transaction detail cards ──────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.5rem' }}>
 
-          {/* Order number */}
-          {orderNumber && (
-            <div style={detailRow}>
-              <Package size={16} style={{ color: '#1565C0', flexShrink: 0 }} />
-              <span style={{ color: '#555', fontSize: '0.85rem' }}>رقم الطلب</span>
-              <span style={{ marginRight: 'auto', fontWeight: 700, color: '#1565C0', fontSize: '0.85rem', direction: 'ltr' }}>
-                {orderNumber}
-              </span>
-            </div>
-          )}
+
 
           {/* Amount */}
           {amountDisplay && (
             <div style={detailRow}>
-              <span style={{ fontSize: '1rem', flexShrink: 0 }}>💰</span>
               <span style={{ color: '#555', fontSize: '0.85rem' }}>
                 {isCod ? 'إجمالي المطلوب عند الاستلام' : 'المبلغ المدفوع'}
               </span>
@@ -287,27 +288,7 @@ export const PaymentSuccessPage: React.FC = () => {
             </div>
           )}
 
-          {/* Status message */}
-          {txnMessage && (
-            <div style={detailRow}>
-              <span style={{ fontSize: '1rem', flexShrink: 0 }}>🔐</span>
-              <span style={{ color: '#555', fontSize: '0.85rem' }}>حالة الطلب</span>
-              <span style={{ marginRight: 'auto', fontWeight: 700, color: isSuccess ? '#2E7D32' : '#C62828', fontSize: '0.85rem' }}>
-                {txnMessage === 'Approved' ? (isCod ? 'تم تأكيد الطلب' : 'مقبولة (Approved)') : txnMessage}
-              </span>
-            </div>
-          )}
 
-          {/* Source type */}
-          {sourceType && sourceType !== 'card' && (
-            <div style={detailRow}>
-              <span style={{ fontSize: '1rem', flexShrink: 0 }}>📱</span>
-              <span style={{ color: '#555', fontSize: '0.85rem' }}>طريقة الدفع</span>
-              <span style={{ marginRight: 'auto', fontWeight: 600, color: '#333', fontSize: '0.85rem' }}>
-                {sourceType.toLowerCase() === 'cod' ? 'الدفع عند الاستلام' : sourceType}
-              </span>
-            </div>
-          )}
         </div>
 
 
@@ -329,10 +310,10 @@ export const PaymentSuccessPage: React.FC = () => {
             تواصل معنا عبر واتساب
           </a>
 
-          <button onClick={() => navigate('/')} style={btnPrimary}
+          <button onClick={() => navigate('/products')} style={btnPrimary}
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'none'; }}>
-            <Home size={17} /> الصفحة الرئيسية
+            <ShoppingBag size={17} /> تصفح المنتجات
           </button>
 
           {!isSuccess && (

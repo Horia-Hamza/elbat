@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Heart, Plus } from 'lucide-react';
+import { Star, Heart, ShoppingBag } from 'lucide-react';
 import type { ApiProduct } from '../types/api';
 import { IMAGES_BASE_URL } from '../api/client';
 
@@ -92,19 +92,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {product.inStock === false ? (
             <button
               className="add-to-cart-btn disabled"
-              style={{ backgroundColor: '#bdbdbd', cursor: 'not-allowed' }}
+              style={{ backgroundColor: '#bdbdbd', cursor: 'not-allowed', color: '#fff' }}
               disabled
               title="نفذت الكمية"
             >
-              <Plus size={20} />
+              نفذت الكمية
             </button>
           ) : (
             <button
               className="add-to-cart-btn"
               onClick={(e) => onAddToCart(product, e)}
-              title="أضف إلى السلة"
+              title="إضافة للسلة"
             >
-              <Plus size={20} />
+              إضافة للسلة
             </button>
           )}
         </div>

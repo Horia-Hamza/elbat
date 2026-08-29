@@ -1,65 +1,41 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
-import { subCategoriesApi } from '../api/subcategories';
 import { productsApi } from '../api/products';
 import { Loader2, PackageSearch } from 'lucide-react';
 import type { ApiProduct } from '../types/api';
 import { useSEO } from '../hooks/useSEO';
 
-interface SubCategoryPageProps {
+interface ProductsPageProps {
   favorites: string[];
   handleToggleFavorite: (id: string, e: React.MouseEvent) => void;
   handleQuickAddToCart: (product: ApiProduct, e: React.MouseEvent) => void;
 }
 
-export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
+export const ProductsPage: React.FC<ProductsPageProps> = ({
   favorites,
   handleToggleFavorite,
   handleQuickAddToCart,
 }) => {
-  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-
-  const subCategoryId = id ? parseInt(id, 10) : null;
-
-  // ── Subcategory metadata ─────────────────────────────────────
-  const [subCatName, setSubCatName] = useState<string>('');
-  const [categoryName, setCategoryName] = useState<string>('');
-
-  useEffect(() => {
-    if (!subCategoryId || isNaN(subCategoryId)) return;
-    subCategoriesApi
-      .getSubCategories()
-      .then((all: any[]) => {
-        const found = Array.isArray(all) ? all.find((sc) => sc.id === subCategoryId) : null;
-        if (found) {
-          setSubCatName(found.name || '');
-          setCategoryName(found.categoryName || '');
-        }
-      })
-      .catch(() => {});
-  }, [subCategoryId]);
-
-  // ── Products via POST /api/Product/filter ───────────────────
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    if (!subCategoryId || isNaN(subCategoryId)) {
-      setProducts([]);
-      setProductsLoading(false);
-      return;
-    }
+  useSEO({
+    title: 'جميع المنتجات | متجر البط',
+    description: 'تصفح جميع المنتجات في متجر البط — أفضل البيجامات وملابس النوم بأسعار مناسبة وشحن سريع لجميع أنحاء مصر.',
+    url: '/products',
+    type: 'website',
+  });
 
+  useEffect(() => {
     let isMounted = true;
     setProductsLoading(true);
 
     productsApi
       .filterProducts({
         pageNumber: 1,
-        pageSize: 24,
-        subCategoryId: subCategoryId,
+        pageSize: 50,
         isActive: true,
         inStock: true,
       })
@@ -69,7 +45,7 @@ export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
         setProducts(items);
       })
       .catch((err) => {
-        console.error('Error fetching subcategory products via /Product/filter:', err);
+        console.error('Error fetching all products via /Product/filter:', err);
         if (isMounted) setProducts([]);
       })
       .finally(() => {
@@ -79,21 +55,12 @@ export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [subCategoryId]);
+  }, []);
 
   const activeProducts = useMemo(
     () => products.filter((p) => p.isActive !== false),
     [products]
   );
-
-  useSEO({
-    title: subCatName ? `${subCatName} | متجر البط` : 'أقسام المتجر | متجر البط',
-    description: subCatName
-      ? `تصفح منتجات ${subCatName} في متجر البط — أفضل المنتجات بأسعار مناسبة وشحن سريع لجميع أنحاء مصر.`
-      : 'متجر البط — تصفح منتجاتنا واكتشف عروضنا الحصرية.',
-    url: id ? `/subcategory/${id}` : undefined,
-    type: 'website',
-  });
 
   // ── Loading state ────────────────────────────────────────────
   if (productsLoading) {
@@ -110,17 +77,17 @@ export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
         }}
       >
         <Loader2 size={40} style={{ animation: 'spin 1s linear infinite' }} />
-        <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>جاري تحميل منتجات القسم...</span>
+        <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>جاري تحميل جميع المنتجات...</span>
       </div>
     );
   }
 
   return (
     <div
-      className="section-container subcategory-page-container"
+      className="section-container products-page-container"
       style={{ padding: '1rem 1.5rem 4rem', direction: 'rtl' }}
     >
-      {/* ── Breadcrumb + header ── */}
+      {/* ── Breadcrumb + Banner ── */}
       <div
         className="subcategory-banner"
         style={{
@@ -137,9 +104,7 @@ export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--primary)' }}>
           <span style={{ cursor: 'pointer', fontWeight: 500 }} onClick={() => navigate('/')}>الرئيسية</span>
           <span>&gt;</span>
-          <span style={{ color: 'var(--text-muted)' }}>{categoryName || 'الأقسام'}</span>
-          <span>&gt;</span>
-          <span style={{ fontWeight: 'bold' }}>{subCatName || '...'}</span>
+          <span style={{ fontWeight: 'bold' }}>كل المنتجات</span>
         </div>
 
         <h1
@@ -151,7 +116,7 @@ export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
             margin: '0.1rem 0 0',
           }}
         >
-          {subCatName || '...'}
+          جميع المنتجات
         </h1>
       </div>
 
@@ -173,17 +138,17 @@ export const SubCategoryPage: React.FC<SubCategoryPageProps> = ({
           >
             <PackageSearch size={52} style={{ color: 'var(--primary)', opacity: 0.5 }} />
             <h3 style={{ color: 'var(--text-main)', fontWeight: 700, fontSize: '1.2rem', margin: 0 }}>
-              لا توجد منتجات متوفرة في هذا القسم حالياً!
+              لا توجد منتجات متوفرة حالياً!
             </h3>
             <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: 0 }}>
-              يرجى التحقق لاحقاً أو استكشاف أقسام أخرى بالمتجر.
+              يرجى التحقق لاحقاً.
             </p>
             <button
               className="btn-primary"
               onClick={() => navigate('/')}
               style={{ padding: '0.5rem 2rem', marginTop: '0.5rem' }}
             >
-              تصفح المتجر
+              العودة للرئيسية
             </button>
           </div>
         ) : (

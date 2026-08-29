@@ -12,7 +12,7 @@ export function useProducts(params: ProductFilterParams) {
   // We stringify params in a safe way to use it as a dependency array trigger
   const paramsKey = JSON.stringify(params);
 
-  const refetch = () => setRefetchTrigger(prev => prev + 1);
+  const refetch = () => setRefetchTrigger((prev) => prev + 1);
 
   useEffect(() => {
     let isMounted = true;
@@ -20,10 +20,14 @@ export function useProducts(params: ProductFilterParams) {
     async function fetchProducts() {
       try {
         setLoading(true);
-        const data = await productsApi.getProducts(params);
+        // Strip null and undefined values to produce clean JSON body payload for POST /api/Product/filter
+        const cleanPayload = Object.fromEntries(
+          Object.entries(params).filter(([_, v]) => v !== null && v !== undefined)
+        );
+        const data = await productsApi.filterProducts(cleanPayload);
         if (isMounted) {
-          const items = Array.isArray(data) ? data : (data?.items || []);
-          const total = Array.isArray(data) ? data.length : (data?.totalCount || 0);
+          const items = Array.isArray(data) ? data : data?.items || (data as any)?.data || [];
+          const total = Array.isArray(data) ? data.length : data?.totalCount || 0;
           setProducts(items);
           setTotalCount(total);
           setError(null);
@@ -44,7 +48,7 @@ export function useProducts(params: ProductFilterParams) {
     return () => {
       isMounted = false;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramsKey, refetchTrigger]);
 
   return { products, totalCount, loading, error, refetch };

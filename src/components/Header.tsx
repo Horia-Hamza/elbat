@@ -109,6 +109,16 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 الرئيسية
               </button>
+              {/* All Products link */}
+              <button
+                className={`subcategory-nav-btn ${activeSubCategory === 'products' ? 'active' : ''}`}
+                onClick={() => {
+                  onSubCategorySelect('products');
+                  navigate('/products');
+                }}
+              >
+                كل المنتجات
+              </button>
               {subCategories.filter(sc => sc.isActive).map((sc) => {
                 const isSubActive = activeSubCategory === sc.id.toString();
                 return (
@@ -188,6 +198,16 @@ export const Header: React.FC<HeaderProps> = ({
             }}
           >
             الرئيسية
+          </button>
+          {/* All Products link */}
+          <button
+            className={`subcategory-nav-btn ${activeSubCategory === 'products' ? 'active' : ''}`}
+            onClick={() => {
+              onSubCategorySelect('products');
+              navigate('/products');
+            }}
+          >
+            كل المنتجات
           </button>
           {subCategories.filter(sc => sc.isActive).map((sc) => {
             const isSubActive = activeSubCategory === sc.id.toString();

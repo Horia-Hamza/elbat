@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Trash2, Plus, Minus, ShoppingBag, CreditCard } from 'lucide-react';
 import type { ApiProduct } from '../types/api';
 import { IMAGES_BASE_URL } from '../api/client';
@@ -28,6 +29,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onRemoveItem,
   onCheckoutOpen
 }) => {
+  const navigate = useNavigate();
   const getProductImage = (p: ApiProduct) => {
     if (p.mainImageUrl) {
       return p.mainImageUrl.startsWith('http') ? p.mainImageUrl : `${IMAGES_BASE_URL}${p.mainImageUrl}`;
@@ -73,7 +75,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </p>
               <button 
                 className="btn-secondary" 
-                onClick={onClose} 
+                onClick={() => {
+                  onClose();
+                  navigate('/products');
+                }} 
                 style={{ marginTop: '0.5rem', padding: '0.6rem 1.8rem' }}
               >
                 تصفح المنتجات
