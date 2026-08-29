@@ -197,28 +197,57 @@ function App() {
   const syncWishlistToBackend = async () => {
     const token = localStorage.getItem('elbat_token');
     if (!token) return;
-    const localWishlistStr = localStorage.getItem('wishlist');
-    if (!localWishlistStr) return;
+    const decodedUserId = getUserIdFromToken();
+    if (!decodedUserId || decodedUserId === 'string') return;
+
+    let itemsToSync: number[] = [];
+
+    // 1. Read from offline 'wishlist' queue in localStorage
     try {
-      const localWishlist = JSON.parse(localWishlistStr);
-      if (Array.isArray(localWishlist) && localWishlist.length > 0) {
-        const decodedUserId = getUserIdFromToken();
-        // Sync each item to backend API
-        for (const item of localWishlist) {
-          try {
-            await wishlistApi.addToWishlist({
-              userId: decodedUserId,
-              productId: Number(item.productId),
-            });
-          } catch (e) {
-            console.error('Error syncing item to wishlist API:', e);
-          }
+      const queueStr = localStorage.getItem('wishlist');
+      if (queueStr) {
+        const parsed = JSON.parse(queueStr);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((item) => {
+            const pid = typeof item === 'object' ? Number(item.productId) : Number(item);
+            if (pid && !itemsToSync.includes(pid)) itemsToSync.push(pid);
+          });
         }
-        // Clear local wishlist
-        localStorage.setItem('wishlist', JSON.stringify([]));
       }
     } catch (e) {
-      console.error('Error parsing wishlist from localStorage:', e);
+      console.error('Error reading offline wishlist queue:', e);
+    }
+
+    // 2. Read from offline 'elbat_favs' in localStorage
+    try {
+      const favsStr = localStorage.getItem('elbat_favs');
+      if (favsStr) {
+        const parsedFavs = JSON.parse(favsStr);
+        if (Array.isArray(parsedFavs)) {
+          parsedFavs.forEach((id) => {
+            const pid = Number(id);
+            if (pid && !itemsToSync.includes(pid)) itemsToSync.push(pid);
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Error reading elbat_favs:', e);
+    }
+
+    // 3. Post each offline item one by one to POST /api/Wishlist
+    if (itemsToSync.length > 0) {
+      for (const productId of itemsToSync) {
+        try {
+          await wishlistApi.addToWishlist({
+            userId: decodedUserId,
+            productId: productId,
+          });
+        } catch (e) {
+          console.error(`Error syncing product ${productId} to Wishlist API:`, e);
+        }
+      }
+      // Clear offline wishlist queue once posted
+      localStorage.removeItem('wishlist');
     }
   };
 
@@ -228,31 +257,34 @@ function App() {
     try {
       const decodedUserId = getUserIdFromToken();
       if (!decodedUserId || decodedUserId === 'string') return;
+      // Fetch user wishlist once from GET /api/Wishlist/user/{userId}
       const items = await wishlistApi.getWishlistByUser(decodedUserId);
       if (Array.isArray(items)) {
-        const serverProductIds = items.map(item => String(item.productId));
+        const serverProductIds = items.map((item) => String(item.productId));
         setFavorites((prev) => Array.from(new Set([...prev, ...serverProductIds])));
       }
     } catch (e) {
-      console.error('Error fetching wishlist from server:', e);
+      console.error('Error fetching user wishlist from server:', e);
     }
   };
 
-  // Sync and fetch ONCE when user is logged in or on auth storage change (no 5s polling loop)
+  // Sync offline favorites & fetch user wishlist ONCE on login or mount (no recurring 5s polling loop)
   useEffect(() => {
-    const token = localStorage.getItem('elbat_token');
-    if (token) {
-      syncCartToBackend();
-      syncWishlistToBackend();
-      fetchWishlistFromServer();
-    }
+    const runWishlistSyncAndFetch = async () => {
+      const token = localStorage.getItem('elbat_token');
+      if (token) {
+        await syncCartToBackend();
+        await syncWishlistToBackend();
+        await fetchWishlistFromServer();
+      }
+    };
+
+    runWishlistSyncAndFetch();
 
     const handleStorage = () => {
       const currentToken = localStorage.getItem('elbat_token');
       if (currentToken) {
-        syncCartToBackend();
-        syncWishlistToBackend();
-        fetchWishlistFromServer();
+        runWishlistSyncAndFetch();
       }
     };
 
@@ -425,12 +457,12 @@ function App() {
     e.stopPropagation();
     const isFav = favorites.includes(id);
     const numId = Number(id);
+    const token = localStorage.getItem('elbat_token');
 
     if (isFav) {
       showToast(`تمت الإزالة من المفضلة.`, 'error');
       setFavorites((prev) => prev.filter((favId) => favId !== id));
 
-      const token = localStorage.getItem('elbat_token');
       if (token) {
         try {
           const decodedUserId = getUserIdFromToken();
@@ -444,12 +476,21 @@ function App() {
         } catch (err) {
           console.error('Error removing item from wishlist API:', err);
         }
+      } else {
+        // Update offline wishlist queue when logged out
+        try {
+          const queueStr = localStorage.getItem('wishlist') || '[]';
+          let queue = JSON.parse(queueStr);
+          if (Array.isArray(queue)) {
+            queue = queue.filter((item) => (typeof item === 'object' ? item.productId !== numId : Number(item) !== numId));
+            localStorage.setItem('wishlist', JSON.stringify(queue));
+          }
+        } catch {}
       }
     } else {
       showToast(`تمت الإضافة إلى المفضلة!`);
       setFavorites((prev) => [...prev, id]);
 
-      const token = localStorage.getItem('elbat_token');
       if (token) {
         try {
           const decodedUserId = getUserIdFromToken();
@@ -460,6 +501,17 @@ function App() {
         } catch (err) {
           console.error('Error adding item to wishlist API:', err);
         }
+      } else {
+        // Store in offline wishlist queue when logged out
+        try {
+          const queueStr = localStorage.getItem('wishlist') || '[]';
+          let queue = JSON.parse(queueStr);
+          if (!Array.isArray(queue)) queue = [];
+          if (!queue.some((item) => (typeof item === 'object' ? item.productId === numId : Number(item) === numId))) {
+            queue.push({ productId: numId });
+            localStorage.setItem('wishlist', JSON.stringify(queue));
+          }
+        } catch {}
       }
     }
   };

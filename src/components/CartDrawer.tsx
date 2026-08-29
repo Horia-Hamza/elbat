@@ -71,7 +71,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               />
               <h3>سلتك فارغة حالياً!</h3>
               <p style={{ fontSize: '0.85rem' }}>
-                البطة الصفراء بانتظار أن تملأ سلتك بأفضل ألعاب الاستحمام والمستلزمات الرائعة.
+                استكشفي تشكيلتنا المميزة من أحدث الملابس والأزياء العصرية واختاري ما يناسب ذوقك.
               </p>
               <button 
                 className="btn-secondary" 

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Heart, ShoppingBag, User, UserCheck, ShieldCheck, LogOut } from 'lucide-react';
-import { getCurrentUser } from '../api/auth';
+import { getCurrentUser, clearAuthSession } from '../api/auth';
 import { SearchDropdown } from './SearchDropdown';
 import type { SubCategory } from '../types/api';
 
@@ -57,10 +57,33 @@ export const Header: React.FC<HeaderProps> = ({
     );
   })();
 
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleUserIconClick = () => {
-    if (isAdmin) navigate('/admin');
-    else if (isLoggedIn) navigate('/profile');
-    else navigate('/login');
+    if (!isLoggedIn) {
+      navigate('/login');
+    } else {
+      setIsUserMenuOpen((prev) => !prev);
+    }
+  };
+
+  const handleLogout = () => {
+    clearAuthSession();
+    setCurrentUser(null);
+    setIsUserMenuOpen(false);
+    window.dispatchEvent(new Event('storage'));
+    navigate('/login');
   };
 
   const userIconTitle = isAdmin ? 'لوحة الإدارة' : isLoggedIn ? `مرحباً ${currentUser!.firstName || ''}` : 'تسجيل الدخول / حسابي';
@@ -157,32 +180,159 @@ export const Header: React.FC<HeaderProps> = ({
             {cartCount > 0 && <span className="badge-count">{cartCount}</span>}
           </button>
 
-          <button
-            className="action-btn"
-            onClick={handleUserIconClick}
-            title={userIconTitle}
-            style={{ position: 'relative' }}
-          >
-            {isAdmin
-              ? <ShieldCheck size={22} color="#236b93" />
-              : isLoggedIn
-                ? <UserCheck size={22} color="#2e7d32" />
-                : <User size={22} />
-            }
-            {/* Green dot when logged in */}
-            {isLoggedIn && (
-              <span style={{
-                position: 'absolute',
-                top: 2,
-                right: 2,
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: isAdmin ? '#236b93' : '#2e7d32',
-                border: '1.5px solid #fff',
-              }} />
+          <div ref={userMenuRef} style={{ position: 'relative' }}>
+            <button
+              className="action-btn"
+              onClick={handleUserIconClick}
+              title={userIconTitle}
+              style={{ position: 'relative' }}
+            >
+              {isAdmin
+                ? <ShieldCheck size={22} color="#236b93" />
+                : isLoggedIn
+                  ? <UserCheck size={22} color="#2e7d32" />
+                  : <User size={22} />
+              }
+              {/* Green dot when logged in */}
+              {isLoggedIn && (
+                <span style={{
+                  position: 'absolute',
+                  top: 2,
+                  right: 2,
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: isAdmin ? '#236b93' : '#2e7d32',
+                  border: '1.5px solid #fff',
+                }} />
+              )}
+            </button>
+
+            {/* Dropdown Menu when logged in */}
+            {isLoggedIn && isUserMenuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 10px)',
+                  left: 0,
+                  minWidth: '210px',
+                  background: '#ffffff',
+                  borderRadius: '16px',
+                  boxShadow: '0 12px 35px rgba(35,107,147,0.18)',
+                  border: '1px solid rgba(35,107,147,0.12)',
+                  zIndex: 1000,
+                  overflow: 'hidden',
+                  direction: 'rtl',
+                }}
+              >
+                {/* User Info Header */}
+                <div
+                  style={{
+                    padding: '0.85rem 1rem',
+                    background: 'linear-gradient(135deg, rgba(35,107,147,0.06) 0%, rgba(35,107,147,0.02) 100%)',
+                    borderBottom: '1px solid rgba(0,0,0,0.06)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                  }}
+                >
+                  <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--primary-dark)' }}>
+                    {currentUser?.firstName
+                      ? `${currentUser.firstName} ${currentUser.lastName || ''}`
+                      : 'حسابي'}
+                  </span>
+                  {currentUser?.email && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {currentUser.email}
+                    </span>
+                  )}
+                </div>
+
+                {/* Menu Options */}
+                <div style={{ padding: '0.4rem 0' }}>
+                  {isAdmin && (
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        navigate('/admin');
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.65rem 1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.88rem',
+                        fontWeight: 600,
+                        color: '#236b93',
+                        textAlign: 'right',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(35,107,147,0.06)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                    >
+                      <ShieldCheck size={17} />
+                      <span>لوحة الإدارة</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      navigate('/profile');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '0.65rem 1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.88rem',
+                      fontWeight: 500,
+                      color: 'var(--text-main)',
+                      textAlign: 'right',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.03)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                  >
+                    <User size={17} style={{ color: 'var(--primary)' }} />
+                    <span>الصفحة الشخصية</span>
+                  </button>
+
+                  {/* Logout tab */}
+                  <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', marginTop: '0.3rem', paddingTop: '0.3rem' }}>
+                    <button
+                      onClick={handleLogout}
+                      style={{
+                        width: '100%',
+                        padding: '0.65rem 1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.88rem',
+                        fontWeight: 600,
+                        color: '#ef4444',
+                        textAlign: 'right',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.06)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                    >
+                      <LogOut size={17} />
+                      <span>تسجيل الخروج</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
-          </button>
+          </div>
         </div>
       </div>
 
