@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Heart, ShoppingBag } from 'lucide-react';
+import { Star, Heart } from 'lucide-react';
 import type { ApiProduct } from '../types/api';
 import { IMAGES_BASE_URL } from '../api/client';
 

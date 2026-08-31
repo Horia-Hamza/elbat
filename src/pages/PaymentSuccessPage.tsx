@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Home, ShoppingBag, CreditCard, Package } from 'lucide-react';
+import { CheckCircle, XCircle, ShoppingBag, CreditCard } from 'lucide-react';
 import { getStoreSettings } from '../utils/storeSettings';
 
 type Bubble = {
@@ -25,7 +25,6 @@ export const PaymentSuccessPage: React.FC = () => {
   const cardType = searchParams.get('source_data.sub_type') || null;   // e.g. MasterCard
   const cardPan = searchParams.get('source_data.pan') || null;         // last 4 digits
   const sourceType = searchParams.get('source_data.type') || null;        // card / wallet
-  const txnMessage = searchParams.get('data.message') || null;            // Approved / Declined
   const errorOccurred = searchParams.get('error_occured') === 'true';
 
   const amountDisplay = amountCents > 0

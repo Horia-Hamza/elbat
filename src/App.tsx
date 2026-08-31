@@ -534,7 +534,7 @@ function App() {
           const queueStr = localStorage.getItem('wishlist') || '[]';
           let queue = JSON.parse(queueStr);
           if (!Array.isArray(queue)) queue = [];
-          if (!queue.some((item) => (typeof item === 'object' ? item.productId === numId : Number(item) === numId))) {
+          if (!queue.some((item: any) => (typeof item === 'object' ? item.productId === numId : Number(item) === numId))) {
             queue.push({ productId: numId });
             localStorage.setItem('wishlist', JSON.stringify(queue));
           }

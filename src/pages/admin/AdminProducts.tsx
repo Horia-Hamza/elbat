@@ -6,7 +6,7 @@ import { useSubCategories } from '../../hooks/useSubCategories';
 import { productsApi, productImagesApi, productVideosApi } from '../../api/products';
 import { pageDesignsApi } from '../../api/pageDesigns';
 import { IMAGES_BASE_URL } from '../../api/client';
-import { Plus, Edit, Trash2, X, ImagePlus, CheckCircle, XCircle, Loader, Palette, Video, Eye, BarChart2, Image as ImageIcon, Star } from 'lucide-react';
+import { Plus, Edit, Trash2, X, ImagePlus, CheckCircle, XCircle, Loader, Palette, Video, Eye, Image as ImageIcon, Star } from 'lucide-react';
 import type { ApiProduct } from '../../types/api';
 import { PAGE_TEMPLATES } from '../../constants/pageTemplates';
 import { AdminProductDetail } from './AdminProductDetail';

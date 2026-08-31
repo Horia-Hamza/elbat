@@ -3,14 +3,14 @@ import {
   X, Star, Package, Tag, Layers, Image as ImageIcon,
   Video, Palette, ExternalLink, Loader2, AlertTriangle,
   CheckCircle, XCircle, ShoppingBag, Calendar, Hash,
-  Bot, Copy, Check, Wand2, Send, BarChart2, Trash2,
+  Bot, Copy, Check, Wand2, Send, Trash2,
 } from 'lucide-react';
 import { productsApi, productImagesApi } from '../../api/products';
 import { productVariantsApi } from '../../api/productVariants';
 import { pageDesignsApi } from '../../api/pageDesigns';
 import { IMAGES_BASE_URL } from '../../api/client';
 import { apiFetch } from '../../api/client';
-import type { ApiProduct, ProductVariant, VariantType } from '../../types/api';
+import type { ApiProduct, ProductVariant, VariantType, ApiInventory } from '../../types/api';
 import { VARIANT_TYPE_LABELS as VARIANT_LABELS } from '../../types/api';
 
 interface AdminProductDetailProps {
@@ -137,17 +137,7 @@ export const AdminProductDetail: React.FC<AdminProductDetailProps> = ({ productI
     trackInventory: true, allowBackorder: false,
   });
 
-  /* Inventory form */
-  const [invForm, setInvForm] = useState({
-    quantity: 100,
-    lowStockThreshold: 5,
-    trackInventory: true,
-    allowBackorder: false,
-    variantId: '' as string,
-  });
-  const [invSaving, setInvSaving] = useState(false);
-  const [invSuccess, setInvSuccess] = useState(false);
-  const [invError, setInvError] = useState<string | null>(null);
+
 
   /* Create-design form */
   const [designName, setDesignName]   = useState('');
@@ -179,15 +169,6 @@ export const AdminProductDetail: React.FC<AdminProductDetailProps> = ({ productI
         apiFetch<ApiInventory>(`/Inventory?productId=${productId}`)
           .then(r => {
             setInventory(r);
-            if (r) {
-              setInvForm({
-                quantity: r.quantity,
-                lowStockThreshold: r.lowStockThreshold,
-                trackInventory: r.trackInventory ?? true,
-                allowBackorder: r.allowBackorder,
-                variantId: r.variantId ? r.variantId.toString() : '',
-              });
-            }
           })
           .catch(() => {/* silently ignore */});
 

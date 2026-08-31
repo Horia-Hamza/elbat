@@ -142,6 +142,19 @@ export interface VariantInventory {
   allowBackorder: boolean;
 }
 
+export interface ApiInventory {
+  id: number;
+  productId: number;
+  variantId?: number | null;
+  quantity: number;
+  reservedQuantity: number;
+  availableQuantity: number;
+  lowStockThreshold: number;
+  isLowStock: boolean;
+  isOutOfStock: boolean;
+  allowBackorder: boolean;
+}
+
 export interface CreateProductVariantDto {
   name: string;
   value: string;

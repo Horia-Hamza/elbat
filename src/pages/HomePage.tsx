@@ -35,8 +35,8 @@ type Bubble = {
 export const HomePage: React.FC<HomePageProps> = ({
   activeCategory,
   setActiveCategory,
-  activeSubCategory,
-  setActiveSubCategory,
+  activeSubCategory: _activeSubCategory,
+  setActiveSubCategory: _setActiveSubCategory,
   subCategories,
   showOnlyFavs,
   setShowOnlyFavs,

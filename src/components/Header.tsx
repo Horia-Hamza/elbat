@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Heart, ShoppingBag, User, UserCheck, ShieldCheck, LogOut } from 'lucide-react';
+import { Heart, ShoppingBag, User, UserCheck, ShieldCheck, LogOut } from 'lucide-react';
 import { getCurrentUser, clearAuthSession } from '../api/auth';
 import { SearchDropdown } from './SearchDropdown';
 import type { SubCategory } from '../types/api';

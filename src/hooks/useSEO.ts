@@ -79,13 +79,7 @@ export function useSEO({
     }
 
     // Canonical URL
-    let linkCanonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
-    if (!linkCanonical) {
-      linkCanonical = document.createElement('link');
-      linkCanonical.rel = 'canonical';
-      document.head.appendChild(linkCanonical);
-    }
-    linkCanonical.href = canonicalUrl;
+    setLink('canonical', canonicalUrl);
 
     // Open Graph
     setMeta('og:title', fullTitle, true);
