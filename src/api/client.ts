@@ -57,6 +57,13 @@ export async function apiFetch<T>(
     throw networkErr;
   }
 
+  // ── Handle 401 Unauthorized (Expired / Invalid Token) ──────
+  if (res.status === 401) {
+    console.warn('🔒 [401 Unauthorized] Token expired or invalid. Clearing all localStorage.');
+    localStorage.clear();
+    window.dispatchEvent(new Event('storage'));
+  }
+
   // ── Try to parse JSON response ────────────────────────────────
   let rawText = '';
   try {

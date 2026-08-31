@@ -105,7 +105,13 @@ function App() {
 
   const [favorites, setFavorites] = useState<string[]>(() => {
     const saved = localStorage.getItem('elbat_favs');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? Array.from(new Set(parsed.map(String))) : [];
+    } catch {
+      return [];
+    }
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -161,7 +167,8 @@ function App() {
   }, [cartItems]);
 
   useEffect(() => {
-    localStorage.setItem('elbat_favs', JSON.stringify(favorites));
+    const uniqueFavs = Array.from(new Set(favorites.map(String)));
+    localStorage.setItem('elbat_favs', JSON.stringify(uniqueFavs));
   }, [favorites]);
 
   const syncCartToBackend = async () => {
@@ -202,12 +209,12 @@ function App() {
 
     let itemsToSync: number[] = [];
 
-    // 1. Read from offline 'wishlist' queue in localStorage
+    // Read ONLY from offline 'wishlist' queue in localStorage (queued when logged out)
     try {
       const queueStr = localStorage.getItem('wishlist');
       if (queueStr) {
         const parsed = JSON.parse(queueStr);
-        if (Array.isArray(parsed)) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           parsed.forEach((item) => {
             const pid = typeof item === 'object' ? Number(item.productId) : Number(item);
             if (pid && !itemsToSync.includes(pid)) itemsToSync.push(pid);
@@ -218,23 +225,7 @@ function App() {
       console.error('Error reading offline wishlist queue:', e);
     }
 
-    // 2. Read from offline 'elbat_favs' in localStorage
-    try {
-      const favsStr = localStorage.getItem('elbat_favs');
-      if (favsStr) {
-        const parsedFavs = JSON.parse(favsStr);
-        if (Array.isArray(parsedFavs)) {
-          parsedFavs.forEach((id) => {
-            const pid = Number(id);
-            if (pid && !itemsToSync.includes(pid)) itemsToSync.push(pid);
-          });
-        }
-      }
-    } catch (e) {
-      console.error('Error reading elbat_favs:', e);
-    }
-
-    // 3. Post each offline item one by one to POST /api/Wishlist
+    // Post each offline item one by one to POST /api/Wishlist
     if (itemsToSync.length > 0) {
       for (const productId of itemsToSync) {
         try {
@@ -255,13 +246,13 @@ function App() {
     const token = localStorage.getItem('elbat_token');
     if (!token) return;
     try {
-      const decodedUserId = getUserIdFromToken();
-      if (!decodedUserId || decodedUserId === 'string') return;
-      // Fetch user wishlist once from GET /api/Wishlist/user/{userId}
-      const items = await wishlistApi.getWishlistByUser(decodedUserId);
-      if (Array.isArray(items)) {
-        const serverProductIds = items.map((item) => String(item.productId));
-        setFavorites((prev) => Array.from(new Set([...prev, ...serverProductIds])));
+      // GET /api/Wishlist (token header only)
+      const items = await wishlistApi.getWishlist();
+      const itemsArray = Array.isArray(items) ? items : (items as any)?.data || [];
+      if (Array.isArray(itemsArray)) {
+        const serverProductIds = Array.from(new Set(itemsArray.map((item: any) => String(item.productId))));
+        setFavorites(serverProductIds);
+        localStorage.setItem('elbat_favs', JSON.stringify(serverProductIds));
       }
     } catch (e) {
       console.error('Error fetching user wishlist from server:', e);
@@ -385,13 +376,13 @@ function App() {
     handleAddToCart(product, 1, defaultColor, defaultSize);
   };
 
-  const handleUpdateCartQuantity = (id: string, qty: number) => {
+  const handleUpdateCartQuantity = async (id: string, qty: number) => {
     if (qty < 1) return;
     setCartItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, quantity: qty } : item))
     );
 
-    // Update 'cart' in localStorage
+    // Update 'cart' in localStorage & call Cart API if logged in
     try {
       const item = cartItems.find((i) => i.id === id);
       if (item) {
@@ -415,19 +406,30 @@ function App() {
             }
           }
         }
+
+        const token = localStorage.getItem('elbat_token');
+        if (token) {
+          const decodedUserId = getUserIdFromToken();
+          await cartApi.addToCart({
+            userId: decodedUserId,
+            productId: item.product.id,
+            variantId: variantId,
+            quantity: qty,
+          });
+        }
       }
     } catch (e) {
-      console.error(e);
+      console.error('Error updating cart item quantity:', e);
     }
   };
 
-  const handleRemoveCartItem = (id: string) => {
+  const handleRemoveCartItem = async (id: string) => {
     const item = cartItems.find((i) => i.id === id);
     setCartItems((prev) => prev.filter((i) => i.id !== id));
     if (item) {
       showToast(`تمت إزالة "${item.product.name}" من السلة.`, 'error');
 
-      // Update 'cart' in localStorage
+      // Update 'cart' in localStorage & call Cart API if logged in
       try {
         let variantId = 0;
         if (item.product.variants && item.product.variants.length > 0) {
@@ -446,9 +448,33 @@ function App() {
             localStorage.setItem('cart', JSON.stringify(localCart));
           }
         }
+
+        const token = localStorage.getItem('elbat_token');
+        if (token) {
+          await cartApi.removeFromCart(item.product.id, variantId);
+        }
       } catch (e) {
-        console.error(e);
+        console.error('Error removing cart item:', e);
       }
+    }
+  };
+
+  const handleClearCart = async () => {
+    setCartItems([]);
+    localStorage.setItem('cart', JSON.stringify([]));
+    localStorage.setItem('elbat_cart', JSON.stringify([]));
+
+    const token = localStorage.getItem('elbat_token');
+    if (token) {
+      try {
+        // POST /api/Cart/ClearCart
+        await cartApi.clearCart();
+        showToast('تم تفريغ السلة بنجاح.');
+      } catch (e) {
+        console.error('Error clearing cart via API:', e);
+      }
+    } else {
+      showToast('تم تفريغ السلة بنجاح.');
     }
   };
 
@@ -461,48 +487,49 @@ function App() {
 
     if (isFav) {
       showToast(`تمت الإزالة من المفضلة.`, 'error');
-      setFavorites((prev) => prev.filter((favId) => favId !== id));
+      const updatedFavs = favorites.filter((favId) => favId !== id);
+      setFavorites(updatedFavs);
+      localStorage.setItem('elbat_favs', JSON.stringify(updatedFavs));
+
+      // Remove item from offline 'wishlist' queue in localStorage
+      try {
+        const queueStr = localStorage.getItem('wishlist') || '[]';
+        let queue = JSON.parse(queueStr);
+        if (Array.isArray(queue)) {
+          queue = queue.filter((item) => (typeof item === 'object' ? item.productId !== numId : Number(item) !== numId));
+          localStorage.setItem('wishlist', JSON.stringify(queue));
+        }
+      } catch {}
 
       if (token) {
         try {
-          const decodedUserId = getUserIdFromToken();
-          const items = await wishlistApi.getWishlistByUser(decodedUserId);
-          if (Array.isArray(items)) {
-            const match = items.find((i) => i.productId === numId);
-            if (match && match.id) {
-              await wishlistApi.removeFromWishlist(match.id);
-            }
-          }
+          // DELETE /api/Wishlist/item?productId={numId}
+          await wishlistApi.removeFromWishlistByProductId(numId);
+          // Call GET /api/Wishlist to update fav items list directly from server
+          await fetchWishlistFromServer();
         } catch (err) {
           console.error('Error removing item from wishlist API:', err);
         }
-      } else {
-        // Update offline wishlist queue when logged out
-        try {
-          const queueStr = localStorage.getItem('wishlist') || '[]';
-          let queue = JSON.parse(queueStr);
-          if (Array.isArray(queue)) {
-            queue = queue.filter((item) => (typeof item === 'object' ? item.productId !== numId : Number(item) !== numId));
-            localStorage.setItem('wishlist', JSON.stringify(queue));
-          }
-        } catch {}
       }
     } else {
       showToast(`تمت الإضافة إلى المفضلة!`);
-      setFavorites((prev) => [...prev, id]);
+      const updatedFavs = Array.from(new Set([...favorites, id]));
+      setFavorites(updatedFavs);
+      localStorage.setItem('elbat_favs', JSON.stringify(updatedFavs));
 
       if (token) {
         try {
-          const decodedUserId = getUserIdFromToken();
+          // POST /api/Wishlist { productId: numId }
           await wishlistApi.addToWishlist({
-            userId: decodedUserId,
             productId: numId,
           });
+          // Call GET /api/Wishlist to update fav items list directly from server
+          await fetchWishlistFromServer();
         } catch (err) {
           console.error('Error adding item to wishlist API:', err);
         }
       } else {
-        // Store in offline wishlist queue when logged out
+        // Store in offline wishlist queue in localStorage when logged out
         try {
           const queueStr = localStorage.getItem('wishlist') || '[]';
           let queue = JSON.parse(queueStr);
@@ -516,6 +543,26 @@ function App() {
     }
   };
 
+
+  // مسح جميع عناصر قائمة المفضلة
+  const handleClearWishlist = async () => {
+    setFavorites([]);
+    localStorage.setItem('elbat_favs', JSON.stringify([]));
+    localStorage.removeItem('wishlist');
+
+    const token = localStorage.getItem('elbat_token');
+    if (token) {
+      try {
+        // DELETE /api/Wishlist/ClearWishlist
+        await wishlistApi.clearWishlist();
+        showToast('تم مسح جميع المنتجات من المفضلة.');
+      } catch (err) {
+        console.error('Error clearing wishlist via API:', err);
+      }
+    } else {
+      showToast('تم مسح جميع المنتجات من المفضلة.');
+    }
+  };
 
   // شراء الآن — يفتح الدفع مباشرة دون إضافة المنتج إلى السلة
   const handleBuyNow = (product: import('./types/api').ApiProduct, quantity: number, color?: string, size?: string) => {
@@ -848,6 +895,7 @@ function App() {
                 setIsCartOpen(false);
                 setIsCheckoutOpen(true);
               }}
+              onClearCart={handleClearCart}
             />
 
             <WishlistDrawer
@@ -856,6 +904,7 @@ function App() {
               favorites={favorites}
               onToggleFavorite={handleToggleFavorite}
               onQuickAddToCart={handleQuickAddToCart}
+              onClearWishlist={handleClearWishlist}
             />
 
             <CheckoutModal

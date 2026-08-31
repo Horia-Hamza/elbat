@@ -112,14 +112,9 @@ export function getCurrentUser(): UserData | null {
   return null;
 }
 
-/** Clear all stored auth keys upon logout */
+/** Clear all stored data from localStorage upon logout or session invalidation */
 export function clearAuthSession() {
-  localStorage.removeItem('elbat_token');
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('elbat_refreshToken');
-  localStorage.removeItem('elbat_user');
-  localStorage.removeItem('user');
+  localStorage.clear();
 }
 
 export const authApi = {

@@ -19,6 +19,7 @@ interface CartDrawerProps {
   onUpdateQuantity: (id: string, qty: number) => void;
   onRemoveItem: (id: string) => void;
   onCheckoutOpen: () => void;
+  onClearCart?: () => void;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -27,7 +28,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   cartItems,
   onUpdateQuantity,
   onRemoveItem,
-  onCheckoutOpen
+  onCheckoutOpen,
+  onClearCart,
 }) => {
   const navigate = useNavigate();
   const getProductImage = (p: ApiProduct) => {
@@ -50,14 +52,41 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     <div className={`drawer-backdrop ${isOpen ? 'open' : ''}`} onClick={onClose}>
       <div className="cart-drawer" onClick={(e) => e.stopPropagation()}>
         {/* ترويسة السلة */}
-        <div className="cart-header">
-          <div className="cart-title">
-            <ShoppingBag size={22} style={{ marginLeft: '8px' }} />
-            سلة المشتريات
+        <div className="cart-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="cart-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShoppingBag size={22} />
+            <span>سلة المشتريات ({totalQuantity})</span>
           </div>
-          <button className="close-btn" onClick={onClose} title="إغلاق">
-            <X size={20} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {cartItems.length > 0 && onClearCart && (
+              <button
+                onClick={onClearCart}
+                title="مسح السلة"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#ef4444',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  transition: 'background 0.2s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.08)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+              >
+                <Trash2 size={14} />
+                <span>مسح السلة</span>
+              </button>
+            )}
+            <button className="close-btn" onClick={onClose} title="إغلاق">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* جسم السلة */}

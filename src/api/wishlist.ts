@@ -2,20 +2,39 @@ import { apiFetch } from './client';
 import type { ApiWishlistItem } from '../types/api';
 
 export const wishlistApi = {
+  /**
+   * GET /api/Wishlist
+   * Fetch wishlist items for logged in user (requires token)
+   */
   getWishlist: () => 
-    apiFetch<ApiWishlistItem[]>('/wishlist'),
+    apiFetch<ApiWishlistItem[]>('/Wishlist'),
 
-  addToWishlist: (data: { userId: string; productId: number }) => 
+  /**
+   * POST /api/Wishlist
+   * Add a product to user's wishlist
+   */
+  addToWishlist: (data: { productId: number; userId?: string }) => 
     apiFetch<ApiWishlistItem>('/Wishlist', {
       method: 'POST',
       body: JSON.stringify(data)
     }),
 
-  getWishlistByUser: (userId: string) => 
-    apiFetch<ApiWishlistItem[]>(`/Wishlist/user/${userId}`),
+  /**
+   * DELETE /api/Wishlist/item?productId={productId}
+   * Remove a product from wishlist by productId
+   */
+  removeFromWishlistByProductId: (productId: number) => 
+    apiFetch<any>(`/Wishlist/item?productId=${productId}`, {
+      method: 'DELETE'
+    }),
 
-  removeFromWishlist: (id: number) => 
-    apiFetch<boolean>(`/wishlist/${id}`, {
+  /**
+   * DELETE /api/Wishlist/ClearWishlist
+   * Clear all items from user's wishlist
+   */
+  clearWishlist: () => 
+    apiFetch<any>('/Wishlist/ClearWishlist', {
       method: 'DELETE'
     })
 };
+

@@ -11,6 +11,7 @@ interface WishlistDrawerProps {
   favorites: string[];
   onToggleFavorite: (id: string, e: React.MouseEvent) => void;
   onQuickAddToCart: (product: ApiProduct, e: React.MouseEvent) => void;
+  onClearWishlist?: () => void;
 }
 
 export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
@@ -19,6 +20,7 @@ export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
   favorites,
   onToggleFavorite,
   onQuickAddToCart,
+  onClearWishlist,
 }) => {
   const navigate = useNavigate();
   const [favoriteProducts, setFavoriteProducts] = useState<ApiProduct[]>([]);
@@ -69,14 +71,41 @@ export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
     <div className={`drawer-backdrop ${isOpen ? 'open' : ''}`} onClick={onClose}>
       <div className="cart-drawer wishlist-drawer" onClick={(e) => e.stopPropagation()}>
         {/* ── Drawer Header ── */}
-        <div className="cart-header">
+        <div className="cart-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div className="cart-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Heart size={22} fill="#E91E63" color="#E91E63" />
             <span>قائمة المفضلة ({favorites.length})</span>
           </div>
-          <button className="close-btn" onClick={onClose} title="إغلاق">
-            <X size={20} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {favorites.length > 0 && onClearWishlist && (
+              <button
+                onClick={onClearWishlist}
+                title="مسح الكل"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#ef4444',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  transition: 'background 0.2s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.08)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+              >
+                <Trash2 size={14} />
+                <span>مسح الكل</span>
+              </button>
+            )}
+            <button className="close-btn" onClick={onClose} title="إغلاق">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* ── Drawer Body ── */}
