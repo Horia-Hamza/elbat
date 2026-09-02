@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Heart, Trash2, ShoppingBag, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type { ApiProduct } from '../types/api';
+import type { ApiProduct, ApiWishlistItem } from '../types/api';
 import { productsApi } from '../api/products';
+import { wishlistApi } from '../api/wishlist';
 import { IMAGES_BASE_URL } from '../api/client';
 
 interface WishlistDrawerProps {
@@ -35,21 +36,62 @@ export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
     let isMounted = true;
     setLoading(true);
 
-    const fetchPromises = favorites.map((idStr) => {
-      const numId = parseInt(idStr, 10);
-      if (isNaN(numId)) return Promise.resolve(null);
-      return productsApi.getProductById(numId).catch(() => null);
-    });
+    const loadWishlistProducts = async () => {
+      const token = localStorage.getItem('elbat_token');
+      if (token) {
+        try {
+          // Call GET /api/Wishlist ONCE to get all items
+          const res = await wishlistApi.getWishlist();
+          const wishlistArray: ApiWishlistItem[] = Array.isArray(res) ? res : (res as any)?.data || [];
+          if (isMounted && Array.isArray(wishlistArray) && wishlistArray.length > 0) {
+            const products: ApiProduct[] = wishlistArray.map((item) => {
+              if (item.product) return item.product;
+              return {
+                id: item.productId,
+                name: item.productName || 'منتج',
+                slug: '',
+                description: null,
+                shortDescription: null,
+                basePrice: item.basePrice || 0,
+                salePrice: item.salePrice ?? null,
+                sku: null,
+                isActive: true,
+                isFeatured: false,
+                subCategoryId: 0,
+                brandId: null,
+                mainImageUrl: item.productImageUrl || null,
+                inStock: item.inStock ?? true,
+              };
+            });
+            setFavoriteProducts(products);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error('Error fetching wishlist from API:', e);
+        }
+      }
 
-    Promise.all(fetchPromises)
-      .then((results) => {
-        if (!isMounted) return;
-        const validProducts = results.filter((p): p is ApiProduct => p !== null);
-        setFavoriteProducts(validProducts);
-      })
-      .finally(() => {
+      // Guest or fallback: fetch individual details
+      try {
+        const fetchPromises = favorites.map((idStr) => {
+          const numId = parseInt(idStr, 10);
+          if (isNaN(numId)) return Promise.resolve(null);
+          return productsApi.getProductById(numId).catch(() => null);
+        });
+        const results = await Promise.all(fetchPromises);
+        if (isMounted) {
+          const validProducts = results.filter((p): p is ApiProduct => p !== null);
+          setFavoriteProducts(validProducts);
+        }
+      } catch (e) {
+        console.error('Error loading fallback products:', e);
+      } finally {
         if (isMounted) setLoading(false);
-      });
+      }
+    };
+
+    loadWishlistProducts();
 
     return () => {
       isMounted = false;

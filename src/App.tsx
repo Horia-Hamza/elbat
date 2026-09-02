@@ -7,7 +7,8 @@ import type { CartItem } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
 import { Toast } from './components/Toast';
 import type { ToastMessage } from './components/Toast';
-import type { ApiProduct } from './types/api';
+import { MapPin, Mail, Phone } from 'lucide-react';
+import type { ApiProduct, ApiCartItem } from './types/api';
 import { HomePage } from './pages/HomePage';
 import { ProductDetailsPage } from './pages/ProductDetailsPage';
 import { PaymentSuccessPage } from './pages/PaymentSuccessPage';
@@ -242,6 +243,61 @@ function App() {
     }
   };
 
+  const getVariantIdForItem = (item: CartItem): number => {
+    if (typeof item.variantId === 'number' && item.variantId > 0) return item.variantId;
+    if (item.product && item.product.variants && item.product.variants.length > 0) {
+      const matched = item.product.variants.find(v =>
+        (!item.color || v.color === item.color) &&
+        (!item.size || v.size === item.size)
+      );
+      if (matched) return matched.id;
+      return item.product.variants[0].id;
+    }
+    return item.variantId || 0;
+  };
+
+  const fetchCartFromServer = async () => {
+    const token = localStorage.getItem('elbat_token');
+    if (!token) return;
+    try {
+      // GET /api/Cart (token header only)
+      const res = await cartApi.getCart();
+      const cartArray: ApiCartItem[] = Array.isArray(res) ? res : (res as any)?.data || [];
+      if (Array.isArray(cartArray)) {
+        const mappedCartItems: CartItem[] = cartArray.map((item) => {
+          const productObj: ApiProduct = item.product || {
+            id: item.productId,
+            name: item.productName || 'منتج',
+            slug: '',
+            description: null,
+            shortDescription: null,
+            basePrice: item.unitPrice || 0,
+            salePrice: item.unitPrice || null,
+            sku: null,
+            isActive: true,
+            isFeatured: false,
+            subCategoryId: 0,
+            brandId: null,
+            mainImageUrl: item.productImageUrl || null,
+            inStock: item.inStock ?? true,
+          };
+
+          return {
+            id: `${item.productId}_${item.variantId || 0}`,
+            product: productObj,
+            quantity: item.quantity,
+            color: item.variantName || undefined,
+            variantId: item.variantId || 0,
+          };
+        });
+
+        setCartItems(mappedCartItems);
+      }
+    } catch (e) {
+      console.error('Error fetching user cart from server:', e);
+    }
+  };
+
   const fetchWishlistFromServer = async () => {
     const token = localStorage.getItem('elbat_token');
     if (!token) return;
@@ -259,23 +315,24 @@ function App() {
     }
   };
 
-  // Sync offline favorites & fetch user wishlist ONCE on login or mount (no recurring 5s polling loop)
+  // Sync offline cart & favorites & fetch user cart & wishlist ONCE on login or mount
   useEffect(() => {
-    const runWishlistSyncAndFetch = async () => {
+    const runSyncAndFetch = async () => {
       const token = localStorage.getItem('elbat_token');
       if (token) {
         await syncCartToBackend();
         await syncWishlistToBackend();
+        await fetchCartFromServer();
         await fetchWishlistFromServer();
       }
     };
 
-    runWishlistSyncAndFetch();
+    runSyncAndFetch();
 
     const handleStorage = () => {
       const currentToken = localStorage.getItem('elbat_token');
       if (currentToken) {
-        runWishlistSyncAndFetch();
+        runSyncAndFetch();
       }
     };
 
@@ -293,14 +350,11 @@ function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // التحكم في السلة
-  const handleAddToCart = (product: ApiProduct, quantity: number = 1, color?: string, size?: string) => {
+  // إضافة منتج للسلة
+  const handleAddToCart = async (product: ApiProduct, quantity: number = 1, color?: string, size?: string) => {
     const priceVal = product.salePrice !== null && product.salePrice !== undefined ? product.salePrice : product.basePrice;
     trackAddToCart({ id: product.id, name: product.name, price: priceVal }, quantity);
 
-    const itemId = `${product.id}_${color || 'none'}_${size || 'none'}`;
-
-    // Resolve variantId
     let variantId = 0;
     if (product.variants && product.variants.length > 0) {
       const matched = product.variants.find(v =>
@@ -314,41 +368,50 @@ function App() {
       }
     }
 
-    // Store in localStorage under the key 'cart'
-    const currentUserId = localStorage.getItem('elbat_token') ? getUserIdFromToken() : 'string';
-    const localCartStr = localStorage.getItem('cart');
-    let localCartArray: any[] = [];
-    try {
-      localCartArray = localCartStr ? JSON.parse(localCartStr) : [];
-      if (!Array.isArray(localCartArray)) {
-        localCartArray = [];
+    const itemId = `${product.id}_${variantId || 0}`;
+    const token = localStorage.getItem('elbat_token');
+
+    if (token) {
+      // Logged in: Call POST /api/Cart ONCE directly
+      try {
+        const decodedUserId = getUserIdFromToken();
+        await cartApi.addToCart({
+          userId: decodedUserId,
+          productId: product.id,
+          variantId: variantId,
+          quantity: quantity,
+        });
+      } catch (e) {
+        console.error('Error adding to cart API:', e);
       }
-    } catch {
-      localCartArray = [];
-    }
-
-    const existingIndex = localCartArray.findIndex(item =>
-      item.productId === product.id &&
-      item.variantId === variantId
-    );
-
-    if (existingIndex > -1) {
-      localCartArray[existingIndex].quantity += quantity;
-      localCartArray[existingIndex].userId = currentUserId;
     } else {
-      localCartArray.push({
-        userId: currentUserId,
-        productId: product.id,
-        variantId: variantId,
-        quantity: quantity
-      });
+      // Guest mode: Save to offline 'cart' queue in localStorage
+      try {
+        const localCartStr = localStorage.getItem('cart');
+        let localCartArray: any[] = localCartStr ? JSON.parse(localCartStr) : [];
+        if (!Array.isArray(localCartArray)) localCartArray = [];
+
+        const existingIndex = localCartArray.findIndex(item =>
+          item.productId === product.id && item.variantId === variantId
+        );
+
+        if (existingIndex > -1) {
+          localCartArray[existingIndex].quantity += quantity;
+        } else {
+          localCartArray.push({
+            userId: 'string',
+            productId: product.id,
+            variantId: variantId,
+            quantity: quantity,
+          });
+        }
+        localStorage.setItem('cart', JSON.stringify(localCartArray));
+      } catch (e) {
+        console.error('Error saving offline cart:', e);
+      }
     }
-    localStorage.setItem('cart', JSON.stringify(localCartArray));
 
-    // Immediately trigger backend sync if token is present
-    syncCartToBackend();
-
-    // Show toast outside of state updater to prevent double execution in StrictMode
+    // Show toast
     const existing = cartItems.find((item) => item.id === itemId);
     if (existing) {
       showToast(`تم تحديث كمية "${product.name}" في السلة!`);
@@ -356,15 +419,15 @@ function App() {
       showToast(`تمت إضافة "${product.name}" إلى السلة بنجاح!`);
     }
 
-    // Normal state update
+    // Update React state
     setCartItems((prevItems) => {
       const isExisting = prevItems.some((item) => item.id === itemId);
       if (isExisting) {
         return prevItems.map((item) =>
-          item.id === itemId ? { ...item, quantity: item.quantity + quantity } : item
+          item.id === itemId ? { ...item, quantity: item.quantity + quantity, variantId } : item
         );
       }
-      return [...prevItems, { id: itemId, product, quantity, color, size }];
+      return [...prevItems, { id: itemId, product, quantity, color, size, variantId }];
     });
   };
 
@@ -377,45 +440,58 @@ function App() {
   };
 
   const handleUpdateCartQuantity = async (id: string, qty: number) => {
-    if (qty < 1) return;
+    const item = cartItems.find((i) => i.id === id);
+    if (!item) return;
+
+    const oldQty = item.quantity;
+    if (qty < 1) {
+      handleRemoveCartItem(id);
+      return;
+    }
+
     setCartItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, quantity: qty } : item))
+      prev.map((i) => (i.id === id ? { ...i, quantity: qty } : i))
     );
 
     // Update 'cart' in localStorage & call Cart API if logged in
     try {
-      const item = cartItems.find((i) => i.id === id);
-      if (item) {
-        let variantId = 0;
-        if (item.product.variants && item.product.variants.length > 0) {
-          const matched = item.product.variants.find(v =>
-            (!item.color || v.color === item.color) &&
-            (!item.size || v.size === item.size)
-          );
-          if (matched) variantId = matched.id;
-        }
+      const variantId = getVariantIdForItem(item);
 
-        const localCartStr = localStorage.getItem('cart');
-        if (localCartStr) {
-          let localCart = JSON.parse(localCartStr);
-          if (Array.isArray(localCart)) {
-            const idx = localCart.findIndex(li => li.productId === item.product.id && li.variantId === variantId);
-            if (idx > -1) {
-              localCart[idx].quantity = qty;
-              localStorage.setItem('cart', JSON.stringify(localCart));
-            }
+      const localCartStr = localStorage.getItem('cart');
+      if (localCartStr) {
+        let localCart = JSON.parse(localCartStr);
+        if (Array.isArray(localCart)) {
+          const idx = localCart.findIndex(li => li.productId === item.product.id && li.variantId === variantId);
+          if (idx > -1) {
+            localCart[idx].quantity = qty;
+            localStorage.setItem('cart', JSON.stringify(localCart));
           }
         }
+      }
 
-        const token = localStorage.getItem('elbat_token');
-        if (token) {
-          const decodedUserId = getUserIdFromToken();
+      const token = localStorage.getItem('elbat_token');
+      if (token) {
+        const decodedUserId = getUserIdFromToken();
+        if (qty > oldQty) {
+          // Plus clicked: add difference to backend
+          const diff = qty - oldQty;
           await cartApi.addToCart({
             userId: decodedUserId,
             productId: item.product.id,
             variantId: variantId,
-            quantity: qty,
+            quantity: diff,
           });
+        } else if (qty < oldQty) {
+          // Minus clicked: clear item line on server and re-add remaining desired quantity
+          await cartApi.removeFromCart(item.product.id, variantId);
+          if (qty > 0) {
+            await cartApi.addToCart({
+              userId: decodedUserId,
+              productId: item.product.id,
+              variantId: variantId,
+              quantity: qty,
+            });
+          }
         }
       }
     } catch (e) {
@@ -431,14 +507,7 @@ function App() {
 
       // Update 'cart' in localStorage & call Cart API if logged in
       try {
-        let variantId = 0;
-        if (item.product.variants && item.product.variants.length > 0) {
-          const matched = item.product.variants.find(v =>
-            (!item.color || v.color === item.color) &&
-            (!item.size || v.size === item.size)
-          );
-          if (matched) variantId = matched.id;
-        }
+        const variantId = getVariantIdForItem(item);
 
         const localCartStr = localStorage.getItem('cart');
         if (localCartStr) {
@@ -451,7 +520,9 @@ function App() {
 
         const token = localStorage.getItem('elbat_token');
         if (token) {
+          // 1 single DELETE request: /Cart/item?productId=46&varientId=18
           await cartApi.removeFromCart(item.product.id, variantId);
+          await fetchCartFromServer();
         }
       } catch (e) {
         console.error('Error removing cart item:', e);
@@ -754,10 +825,19 @@ function App() {
 
                 <div>
                   <h4 style={{ color: 'var(--secondary)', marginBottom: '1.2rem', fontWeight: '700' }}>تواصل معنا</h4>
-                  <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.8)' }}>
-                    <li>📍 القاهرة، جمهورية مصر العربية</li>
-                    <li>📧 {storeSettings.email}</li>
-                    <li>📞 {storeSettings.phone}</li>
+                  <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.8)' }}>
+                    <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <MapPin size={16} style={{ color: 'var(--secondary)', flexShrink: 0 }} />
+                      <span>القاهرة، جمهورية مصر العربية</span>
+                    </li>
+                    <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Mail size={16} style={{ color: 'var(--secondary)', flexShrink: 0 }} />
+                      <span>{storeSettings.email}</span>
+                    </li>
+                    <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Phone size={16} style={{ color: 'var(--secondary)', flexShrink: 0 }} />
+                      <span>{storeSettings.phone}</span>
+                    </li>
                     <li style={{ marginTop: '0.8rem', display: 'flex', gap: '0.75rem' }}>
                       <a
                         href={storeSettings.facebook}

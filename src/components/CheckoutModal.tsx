@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   X, ChevronLeft, ChevronRight, Truck, Check, Sparkles,
-  User, MapPin, ShoppingBag, Loader2, AlertCircle, ChevronDown
+  User, MapPin, ShoppingBag, Loader2, AlertCircle, ChevronDown,
+  Home, FileText, Edit2, Phone, Mail
 } from 'lucide-react';
 import type { CartItem } from './CartDrawer';
 import { paymentsApi } from '../api/payments';
@@ -644,13 +645,29 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       padding: '2px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px',
                     }}
                   >
-                    ✏️ تعديل
+                    <Edit2 size={13} />
+                    <span>تعديل</span>
                   </button>
                 </div>
-                <div style={{ fontSize: '0.83rem', color: 'var(--text-main)', lineHeight: 1.7 }}>
-                  {(firstName || lastName) && <div>👤 {firstName} {lastName}</div>}
-                  {phone && <div>📞 {phone}</div>}
-                  {email && <div>📧 {email}</div>}
+                <div style={{ fontSize: '0.83rem', color: 'var(--text-main)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {(firstName || lastName) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <User size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                      <span>{firstName} {lastName}</span>
+                    </div>
+                  )}
+                  {phone && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Phone size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                      <span>{phone}</span>
+                    </div>
+                  )}
+                  {email && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Mail size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                      <span>{email}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -673,22 +690,39 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       padding: '2px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px',
                     }}
                   >
-                    ✏️ تعديل
+                    <Edit2 size={13} />
+                    <span>تعديل</span>
                   </button>
                 </div>
-                <div style={{ fontSize: '0.83rem', color: 'var(--text-main)', lineHeight: 1.7 }}>
-                  {selectedZone && <div>📍 {selectedZone.name} — شحن: {shippingFee === 0 ? 'مجاني' : `${shippingFee.toLocaleString()} ج.م`}</div>}
-                  {addressLine1 && <div>🏠 {addressLine1}</div>}
-                  {addressLine2 && <div>{addressLine2}</div>}
-                  {city && <div>{city}{state ? ` ، ${state}` : ''}</div>}
-                  {notes && <div style={{ color: 'var(--text-muted)' }}>📝 {notes}</div>}
+                <div style={{ fontSize: '0.83rem', color: 'var(--text-main)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {selectedZone && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <MapPin size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                      <span>{selectedZone.name} — شحن: {shippingFee === 0 ? 'مجاني' : `${shippingFee.toLocaleString()} ج.م`}</span>
+                    </div>
+                  )}
+                  {addressLine1 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Home size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                      <span>{addressLine1}</span>
+                    </div>
+                  )}
+                  {addressLine2 && <div style={{ paddingRight: '21px' }}>{addressLine2}</div>}
+                  {city && <div style={{ paddingRight: '21px' }}>{city}{state ? ` ، ${state}` : ''}</div>}
+                  {notes && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>
+                      <FileText size={15} style={{ flexShrink: 0 }} />
+                      <span>{notes}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
 
               <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '1rem' }}>
-                <h4 style={{ color: 'var(--primary-dark)', marginBottom: '0.75rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', fontSize: '0.9rem' }}>
-                  🛒 ملخص المنتجات
+                <h4 style={{ color: 'var(--primary-dark)', marginBottom: '0.75rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <ShoppingBag size={18} style={{ color: 'var(--primary)' }} />
+                  <span>ملخص المنتجات</span>
                 </h4>
                 <div style={{ maxHeight: '130px', overflowY: 'auto', marginBottom: '0.75rem' }}>
                   {cartItems.map((item) => (
@@ -787,7 +821,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               {loading ? (
                 <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> جاري المعالجة...</>
               ) : (
-                <>📦 تأكيد الطلب (الدفع عند الاستلام)</>
+                'تأكيد الطلب والدفع عند الاستلام'
               )}
             </button>
           )}

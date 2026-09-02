@@ -199,10 +199,16 @@ export interface ApiCartItem {
   id: number;
   userId: string;
   productId: number;
-  product?: ApiProduct;
   variantId: number | null;
-  variant?: ProductVariant;
   quantity: number;
+  productName?: string;
+  productImageUrl?: string;
+  unitPrice?: number;
+  totalPrice?: number;
+  variantName?: string;
+  inStock?: boolean;
+  product?: ApiProduct;
+  variant?: ProductVariant;
 }
 
 export interface CartItemAddUpdateDto {
@@ -217,6 +223,12 @@ export interface ApiWishlistItem {
   id: number;
   userId: string;
   productId: number;
+  productName?: string;
+  productImageUrl?: string;
+  basePrice?: number;
+  salePrice?: number | null;
+  inStock?: boolean;
+  addedAt?: string;
   product?: ApiProduct;
 }
 

@@ -10,6 +10,7 @@ export interface CartItem {
   quantity: number;
   color?: string;
   size?: string;
+  variantId?: number | null;
 }
 
 interface CartDrawerProps {
@@ -154,8 +155,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <div className="qty-selector">
                       <button 
                         className="qty-btn" 
-                        onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                        disabled={item.quantity <= 1}
+                        onClick={() => {
+                          if (item.quantity > 1) {
+                            onUpdateQuantity(item.id, item.quantity - 1);
+                          } else {
+                            onRemoveItem(item.id);
+                          }
+                        }}
                       >
                         <Minus size={12} />
                       </button>
