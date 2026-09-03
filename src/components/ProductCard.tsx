@@ -27,13 +27,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           })()
         : '/logo.png');
 
+  const hasDiscount = product.salePrice && product.salePrice < product.basePrice;
+
   return (
     <div className="product-card">
       {/* شارة الخصم أو المنتج الجديد أو نفذت الكمية */}
       {product.inStock === false ? (
-        <span className="badge-tag out-of-stock" style={{ backgroundColor: '#EF5350', color: '#fff' }}>
+        <span className="badge-tag out-of-stock">
           نفذت الكمية
         </span>
+      ) : hasDiscount ? (
+        <div className="badge-tag corner-ribbon">
+          <span>خصم</span>
+          <span>خاص</span>
+        </div>
       ) : product.isFeatured ? (
         <span className="badge-tag new">
           مميز

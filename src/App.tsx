@@ -836,7 +836,22 @@ function App() {
                     </li>
                     <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Phone size={16} style={{ color: 'var(--secondary)', flexShrink: 0 }} />
-                      <span>{storeSettings.phone}</span>
+                      <a
+                        href={`https://wa.me/${storeSettings.whatsapp || storeSettings.phone.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: 'rgba(255, 255, 255, 0.8)',
+                          transition: 'var(--transition)',
+                          direction: 'ltr',
+                          unicodeBidi: 'embed',
+                          display: 'inline-block',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--secondary)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)')}
+                      >
+                        {storeSettings.phone}
+                      </a>
                     </li>
                     <li style={{ marginTop: '0.8rem', display: 'flex', gap: '0.75rem' }}>
                       <a

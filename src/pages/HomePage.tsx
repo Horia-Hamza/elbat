@@ -60,6 +60,42 @@ export const HomePage: React.FC<HomePageProps> = ({
   // Local subcategory state for home page filtering so nav bar is not affected
   const [homeSubCategory, setHomeSubCategory] = useState<string>('all');
 
+  // 48-hour countdown timer logic (persisted in localStorage)
+  const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number }>(() => {
+    const savedEndTime = localStorage.getItem('elbat_offer_end_time');
+    const now = Date.now();
+    let endTime = savedEndTime ? parseInt(savedEndTime, 10) : 0;
+
+    if (!savedEndTime || endTime <= now) {
+      endTime = now + 48 * 60 * 60 * 1000;
+      localStorage.setItem('elbat_offer_end_time', endTime.toString());
+    }
+
+    const diff = Math.max(0, Math.floor((endTime - now) / 1000));
+    return {
+      hours: Math.floor(diff / 3600),
+      minutes: Math.floor((diff % 3600) / 60),
+      seconds: diff % 60,
+    };
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const savedEndTime = localStorage.getItem('elbat_offer_end_time');
+      const now = Date.now();
+      const endTime = savedEndTime ? parseInt(savedEndTime, 10) : now + 48 * 60 * 60 * 1000;
+
+      const diff = Math.max(0, Math.floor((endTime - now) / 1000));
+      setTimeLeft({
+        hours: Math.floor(diff / 3600),
+        minutes: Math.floor((diff % 3600) / 60),
+        seconds: diff % 60,
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   const { products, loading: productsLoading } = useProducts({
     pageNumber: 1,
     pageSize: 24,
@@ -210,6 +246,70 @@ export const HomePage: React.FC<HomePageProps> = ({
         onAddToCart={handleQuickAddToCart}
         onProductClick={(prod) => navigate(`/product/${prod.id}`)}
       />
+
+      {/* ===== OFFER SECTION ===== */}
+      <section className="offer-section" dir="rtl">
+        <div className="offer-section-inner">
+
+          {/* Images */}
+          <div className="offer-images-col">
+            <img src="/offer-pajama-2.jpg" alt="بيجامه اوف شولدر" className="offer-img offer-img-main" />
+            <img src="/offer-pajama-1.jpg" alt="بيجامه اوف شولدر - مفردة" className="offer-img offer-img-secondary" />
+          </div>
+
+          {/* Details */}
+          <div className="offer-details-col">
+            <div className="offer-label">⚡ عرض خاص</div>
+
+            <h2 className="offer-title">
+              النهارده بـ <span className="offer-price-big">185</span> وبس! 😱
+            </h2>
+
+            <p className="offer-desc">
+              بيجامه واسعه ومريحه جداً<br />
+              مناسبه لحد <strong>85 كيلو</strong> 🤍
+            </p>
+
+            <div className="offer-pricing">
+              <div className="offer-pricing-row">
+                <span className="offer-original-price">300 ج.م</span>
+                <span className="offer-discount-tag">خصم 38%</span>
+              </div>
+              <div className="offer-sale-price">185 ج.م</div>
+            </div>
+
+            {/* Countdown Timer */}
+            <div className="offer-countdown-container">
+              <div className="offer-countdown-label">
+                <span className="offer-urgency-dot" />
+                <span>العرض لفترة محدودة — ينتهي خلال:</span>
+              </div>
+              <div className="offer-timer-boxes">
+                <div className="timer-card">
+                  <span className="timer-number">{String(timeLeft.hours).padStart(2, '0')}</span>
+                  <span className="timer-unit">ساعة</span>
+                </div>
+                <span className="timer-divider">:</span>
+                <div className="timer-card">
+                  <span className="timer-number">{String(timeLeft.minutes).padStart(2, '0')}</span>
+                  <span className="timer-unit">دقيقة</span>
+                </div>
+                <span className="timer-divider">:</span>
+                <div className="timer-card">
+                  <span className="timer-number">{String(timeLeft.seconds).padStart(2, '0')}</span>
+                  <span className="timer-unit">ثانية</span>
+                </div>
+              </div>
+            </div>
+
+            <button className="offer-cta-btn" onClick={() => navigate('/product/46')}>
+              اطلبي الآن 🛒
+            </button>
+          </div>
+
+        </div>
+      </section>
+      {/* ========================= */}
 
       <div id="explore-products" style={{ scrollMarginTop: '100px' }}>
         <Categories

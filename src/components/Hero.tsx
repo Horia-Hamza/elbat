@@ -70,6 +70,8 @@ export const Hero: React.FC<HeroProps> = ({
                     })()
                   : '/logo.png');
 
+            const hasDiscount = product.salePrice && product.salePrice < product.basePrice;
+
             return (
               <div
                 key={product.id}
@@ -90,11 +92,20 @@ export const Hero: React.FC<HeroProps> = ({
                 <div className="showcase-card-visual" onClick={() => onProductClick(product)}>
                   <img src={imageUrl} alt={product.name} />
                   <div className="showcase-card-shine" />
-                  {product.isFeatured && (
-                    <span className="badge-tag new" style={{ fontSize: '0.6rem', padding: '0.15rem 0.5rem' }}>
+                  {product.inStock === false ? (
+                    <span className="badge-tag out-of-stock">
+                      نفذت الكمية
+                    </span>
+                  ) : hasDiscount ? (
+                    <div className="badge-tag corner-ribbon">
+                      <span>خصم</span>
+                      <span>خاص</span>
+                    </div>
+                  ) : product.isFeatured ? (
+                    <span className="badge-tag new">
                       مميز
                     </span>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Info */}
@@ -121,10 +132,14 @@ export const Hero: React.FC<HeroProps> = ({
 
                   <div className="showcase-card-action">
                     <div className="showcase-card-pricing">
-                      <span className="showcase-card-price">
-                        {product.salePrice && product.salePrice < product.basePrice ? product.salePrice : product.basePrice}
-                      </span>
-                      <span className="showcase-card-currency">ج.م</span>
+                      {product.salePrice && product.salePrice < product.basePrice ? (
+                        <>
+                          <span className="showcase-card-old-price">{product.basePrice} ج.م</span>
+                          <span className="showcase-card-price">{product.salePrice} ج.م</span>
+                        </>
+                      ) : (
+                        <span className="showcase-card-price">{product.basePrice} ج.م</span>
+                      )}
                     </div>
                     <button
                       className="showcase-add-btn"
