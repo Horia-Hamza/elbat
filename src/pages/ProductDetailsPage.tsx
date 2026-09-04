@@ -1,4 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+
+// Calculates a deterministic sold count that increments by 1 every day.
+// Anchor: Sept 4 2026 = 50 sales. Offset varies slightly per product for realism.
+function getSoldCount(productId: number): number {
+  const ANCHOR = new Date('2026-09-04T00:00:00+03:00').getTime();
+  const now = Date.now();
+  const daysPassed = Math.floor((now - ANCHOR) / (1000 * 60 * 60 * 24));
+  const offset = productId % 20; // 0–19 extra per product
+  return 50 + Math.max(0, daysPassed) + offset;
+}
 import { useParams, useNavigate } from 'react-router-dom';
 import { Star, Plus, Minus, ShoppingCart, ArrowRight, ChevronLeft, ChevronRight, Loader2, Heart } from 'lucide-react';
 import type { ApiProduct } from '../types/api';
@@ -84,7 +94,8 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [iframeHeight, setIframeHeight] = useState<string>('100vh');
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const lastCustomHtmlRef = useRef<{ id: number; html: string }>({ id: -1, html: '' });
 
   // Swipe logic
   const touchStartX = useRef(0);
@@ -136,54 +147,57 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     window.scrollTo(0, 0);
     setActiveImageIndex(0);
 
-    if (id) {
-      setLoading(true);
-      productsApi.getProductById(Number(id))
-        .then((data) => {
-          setProduct(data);
-          trackViewContent({
-            id: data.id,
-            name: data.name,
-            price: data.salePrice !== null && data.salePrice !== undefined ? data.salePrice : data.basePrice
-          });
-          setQuantity(1);
-          setError(null);
+    if (!id) return;
 
-          // Fetch additional product images dynamically
-          productImagesApi.getImagesByProductId(Number(id))
-            .then((imgs) => {
-              if (imgs && imgs.length > 0) {
-                setProduct(prev => prev ? { ...prev, images: imgs } : prev);
-              }
-            })
-            .catch(err => console.warn('Could not fetch product images:', err));
+    setLoading(true);
+    setProduct(null);
+    setRelatedProducts([]);
 
-          // Fetch variants dynamically to guarantee full variants list is populated
-          productVariantsApi.getByProduct(Number(id))
-            .then((vars) => {
-              if (vars && vars.length > 0) {
-                setProduct(prev => prev ? { ...prev, variants: vars } : prev);
-                const firstColor = vars.find(v => v.type === 1 || (v as any).color)?.name || vars.find(v => v.type === 1 || (v as any).color)?.value || '';
-                const firstSize = vars.find(v => v.type === 2 || (v as any).size)?.value || vars.find(v => v.type === 2 || (v as any).size)?.name || '';
-                if (firstColor) setSelectedColor(firstColor);
-                if (firstSize) setSelectedSize(firstSize);
-              }
-            })
-            .catch(err => console.warn('Could not fetch variants:', err));
-        })
-        .catch((err) => {
-          setError(err.message || 'Error fetching product');
-        })
-        .finally(() => setLoading(false));
-
-      productsApi.getRelatedProducts(Number(id), 5)
-        .then((data) => {
-          setRelatedProducts(data);
-        })
-        .catch((err) => {
-          console.error('Error fetching related products:', err);
+    productsApi.getProductById(Number(id))
+      .then(async (data) => {
+        trackViewContent({
+          id: data.id,
+          name: data.name,
+          price: data.salePrice !== null && data.salePrice !== undefined ? data.salePrice : data.basePrice
         });
-    }
+        setQuantity(1);
+        setError(null);
+
+        // Fetch images & variants IN PARALLEL, then batch into ONE setProduct call
+        const [imgsResult, varsResult] = await Promise.allSettled([
+          productImagesApi.getImagesByProductId(Number(id)),
+          productVariantsApi.getByProduct(Number(id)),
+        ]);
+
+        const imgs = imgsResult.status === 'fulfilled' && imgsResult.value?.length > 0
+          ? imgsResult.value : null;
+        const vars = varsResult.status === 'fulfilled' && varsResult.value?.length > 0
+          ? varsResult.value : null;
+
+        // Single state update — no double re-render
+        setProduct({
+          ...data,
+          ...(imgs ? { images: imgs } : {}),
+          ...(vars ? { variants: vars } : {}),
+        });
+
+        if (vars) {
+          const firstColor = vars.find(v => v.type === 1 || (v as any).color)?.name
+            || vars.find(v => v.type === 1 || (v as any).color)?.value || '';
+          const firstSize = vars.find(v => v.type === 2 || (v as any).size)?.value
+            || vars.find(v => v.type === 2 || (v as any).size)?.name || '';
+          if (firstColor) setSelectedColor(firstColor);
+          if (firstSize) setSelectedSize(firstSize);
+        }
+      })
+      .catch((err) => {
+        setError(err.message || 'Error fetching product');
+      })
+      .finally(() => setLoading(false));
+
+    productsApi.getRelatedProducts(Number(id), 5)
+      .then(setRelatedProducts)
+      .catch(() => {/* silent */});
   }, [id]);
 
   useEffect(() => {
@@ -210,7 +224,9 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
         }
       }
       if (event.data && event.data.type === 'RESIZE') {
-        setIframeHeight(`${event.data.height}px`);
+        if (iframeRef.current && event.data.height) {
+          iframeRef.current.style.height = `${event.data.height}px`;
+        }
       }
     };
 
@@ -242,7 +258,10 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   // If the product has a custom HTML template embedded in the response, resolve placeholders
   let customHtml = '';
   if (product.pageDesign) {
-    const mainImgUrl = product.mainImageUrl
+    if (lastCustomHtmlRef.current.id === product.id && lastCustomHtmlRef.current.html) {
+      customHtml = lastCustomHtmlRef.current.html;
+    } else {
+      const mainImgUrl = product.mainImageUrl
       ? (product.mainImageUrl.startsWith('http') ? product.mainImageUrl : `${IMAGES_BASE_URL}${product.mainImageUrl}`)
       : '/logo.png';
 
@@ -906,6 +925,84 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
             });
           `}
 
+          // ── Sold-count badge injection for custom page designs ──────
+          (function() {
+            try {
+              var SOLD_COUNT = ${50 + Math.max(0, Math.floor((Date.now() - new Date('2026-09-04T00:00:00+03:00').getTime()) / (1000 * 60 * 60 * 24))) + (product.id % 20)};
+
+              // Build the badge element — site blue colors, no emoji, block display
+              var badge = document.createElement('div');
+              badge.id = 'sold-count-badge';
+              badge.style.cssText = [
+                'display:flex',
+                'align-items:center',
+                'gap:6px',
+                'font-size:clamp(0.78rem,2.5vw,0.9rem)',
+                'font-weight:600',
+                'color:#236B93',
+                'background:#E6F4FA',
+                'border:1.5px solid rgba(35,107,147,0.25)',
+                'border-radius:8px',
+                'padding:5px 11px',
+                'margin:6px 0 10px 0',
+                'direction:rtl',
+                'white-space:nowrap',
+                'width:fit-content',
+                'max-width:100%',
+                'font-family:inherit',
+                'cursor:default',
+                'user-select:none'
+              ].join(';');
+
+              badge.innerHTML =
+                '<span style="white-space:nowrap;line-height:1">تم بيع <strong style="color:#123B52;font-weight:800;font-size:clamp(0.85rem,2.5vw,0.95rem);margin:0 2px">' +
+                SOLD_COUNT.toLocaleString('ar-EG') +
+                '</strong> مرة</span>';
+
+
+              // Force the badge onto its own line below the rating row
+              badge.style.display = 'block';
+              badge.style.clear = 'both';
+              badge.style.marginTop = '6px';
+              badge.style.marginBottom = '10px';
+
+              // Try to insert after the rating ROW container (not inline inside flex)
+              var inserted = false;
+              var anchors = [
+                document.querySelector('.rating'),
+                document.querySelector('.stars'),
+                document.querySelector('.recommendation'),
+                document.querySelector('[class*="rating"]'),
+                document.querySelector('[class*="review"]'),
+                document.querySelector('.price-box'),
+                document.querySelector('[class*="price"]'),
+                document.querySelector('h1'),
+                document.querySelector('h2')
+              ];
+              for (var i = 0; i < anchors.length; i++) {
+                var anchor = anchors[i];
+                if (anchor && anchor.parentNode) {
+                  // If parent is a flex/inline container, go up one more level
+                  var parent = anchor.parentNode;
+                  var pStyle = window.getComputedStyle(parent);
+                  var insertTarget = (pStyle.display === 'flex' || pStyle.display === 'inline-flex' || pStyle.display === 'inline') ? parent : anchor;
+                  var insertParent = insertTarget.parentNode;
+                  if (insertParent) {
+                    insertParent.insertBefore(badge, insertTarget.nextSibling);
+                    inserted = true;
+                    break;
+                  }
+                }
+              }
+              // Fallback: prepend to body
+              if (!inserted && document.body) {
+                document.body.insertBefore(badge, document.body.firstChild.nextSibling || document.body.firstChild);
+              }
+            } catch(e) {
+              console.warn('Could not inject sold badge:', e);
+            }
+          })();
+
           // Dynamic height adjustment to prevent double scrollbars
           const reportHeight = () => {
             const height = document.documentElement.scrollHeight || document.body.scrollHeight;
@@ -926,10 +1023,12 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       </script>
     `;
 
-    if (customHtml.includes('</body>')) {
-      customHtml = customHtml.replace('</body>', `${scriptToInject}</body>`);
-    } else {
-      customHtml += scriptToInject;
+      if (customHtml.includes('</body>')) {
+        customHtml = customHtml.replace('</body>', `${scriptToInject}</body>`);
+      } else {
+        customHtml += scriptToInject;
+      }
+      lastCustomHtmlRef.current = { id: product.id, html: customHtml };
     }
   }
 
@@ -978,8 +1077,9 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       {product.pageDesign ? (
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
           <iframe
+            ref={iframeRef}
             srcDoc={customHtml}
-            style={{ width: '100%', height: iframeHeight, border: 'none', overflow: 'hidden' }}
+            style={{ width: '100%', minHeight: '100vh', border: 'none', overflow: 'hidden' }}
             title={product.name}
             scrolling="no"
             sandbox="allow-same-origin allow-scripts"
@@ -1092,6 +1192,11 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                     ({product.reviewCount || 0} تقييم من المشترين)
                   </span>
                 </span>
+              </div>
+
+              {/* عدد المبيعات */}
+              <div className="pdp-sold-badge">
+                تم بيع <strong>{getSoldCount(product.id).toLocaleString('ar-EG')}</strong> مرة
               </div>
 
               {/* السعر */}

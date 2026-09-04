@@ -38,7 +38,10 @@
   <link rel="preconnect" href="https://api.elbatshop.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://connect.facebook.net">
+  <!-- Google Fonts — non-blocking (media swap trick) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap"></noscript>
 
   <!-- Organization + WebSite JSON-LD -->
   <script type="application/ld+json">
@@ -85,21 +88,29 @@
     }
     </script>
 
-  <!-- Meta Pixel Code -->
+  <!-- Meta Pixel — deferred, non-blocking -->
   <script>
-    !function (f, b, e, v, n, t, s) {
-      if (f.fbq) return; n = f.fbq = function () {
-        n.callMethod ?
-          n.callMethod.apply(n, arguments) : n.queue.push(arguments)
-      };
-      if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0';
-      n.queue = []; t = b.createElement(e); t.async = !0;
-      t.src = v; s = b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t, s)
-    }(window, document, 'script',
-      'https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '1084111960734732');
-    fbq('track', 'PageView');
+    // Load FB pixel only after the page is interactive (idle or interaction)
+    function _loadFbPixel() {
+      if (window._fbPixelLoaded) return;
+      window._fbPixelLoaded = true;
+      !function(f,b,e,v,n,t,s){
+        if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)
+      }(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+      fbq('init','1084111960734732');
+      fbq('track','PageView');
+    }
+    // Wait for idle time or first user interaction
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(_loadFbPixel, { timeout: 4000 });
+    } else {
+      setTimeout(_loadFbPixel, 3000);
+    }
   </script>
   <!-- End Meta Pixel Code -->
 </head>

@@ -3,6 +3,13 @@ import { Star, Heart } from 'lucide-react';
 import type { ApiProduct } from '../types/api';
 import { IMAGES_BASE_URL } from '../api/client';
 
+// Sold count: starts at 50 on Sept 4 2026, +1 per day, +small per-product offset
+function getSoldCount(productId: number): number {
+  const ANCHOR = new Date('2026-09-04T00:00:00+03:00').getTime();
+  const daysPassed = Math.floor((Date.now() - ANCHOR) / (1000 * 60 * 60 * 24));
+  return 50 + Math.max(0, daysPassed) + (productId % 20);
+}
+
 interface ProductCardProps {
   product: ApiProduct;
   isFavorite: boolean;
@@ -81,6 +88,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <span className="rating-count">
             100% {product.averageRating || 0} ({product.reviewCount || 0} تقييم)
           </span>
+        </div>
+
+        {/* عدد المبيعات */}
+        <div className="product-sold-badge">
+          <span className="product-sold-badge__dot" />
+          تم بيع <strong>{getSoldCount(product.id).toLocaleString('ar-EG')}</strong> مرة
         </div>
 
         {/* السعر وزر الإضافة */}

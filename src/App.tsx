@@ -34,6 +34,7 @@ const ShippingPolicy = lazy(() => import('./pages/policies/ShippingPolicy').then
 
 // Components
 import { WhatsAppButton } from './components/WhatsAppButton';
+import { VisitorCounter } from './components/VisitorCounter';
 
 // Tracking utilities
 import { initTracking, trackPageView, trackAddToCart, trackInitiateCheckout } from './utils/tracking';
@@ -1013,6 +1014,7 @@ function App() {
 
             <Toast toasts={toasts} onClose={removeToast} />
             <WhatsAppButton />
+            <VisitorCounter />
           </div>
         } />
       </Routes>
